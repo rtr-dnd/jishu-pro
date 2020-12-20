@@ -3,7 +3,7 @@ import numpy as np
 import cv2 as cv
 import glob
 
-TARGET = "labs_camera"
+TARGET = "nagaya_camera"
 # Load previously saved data
 mtx = []
 dist = []
@@ -34,7 +34,7 @@ objp[:,:2] = np.mgrid[0:10,0:7].T.reshape(-1,2)
 objp = objp[..., np.newaxis]
 axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
 
-cap1 = cv.VideoCapture(0)
+cap1 = cv.VideoCapture(2)
 
 while True:
   ret, img = cap1.read()

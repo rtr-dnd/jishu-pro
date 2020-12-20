@@ -7,7 +7,7 @@ import glob
 from time import sleep
 from datetime import datetime
 
-CALIB_TARGET = "labs_camera"
+CALIB_TARGET = "nagaya_camera"
 
 TMP_FOLDER_PATH = "./res_" + CALIB_TARGET + "/"
 MTX_PATH = TMP_FOLDER_PATH + "mtx_" + CALIB_TARGET + ".csv"
