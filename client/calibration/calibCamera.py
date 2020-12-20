@@ -7,9 +7,11 @@ import glob
 from time import sleep
 from datetime import datetime
 
-TMP_FOLDER_PATH = "./res_labs_camera/"
-MTX_PATH = TMP_FOLDER_PATH + "mtx.csv"
-DIST_PATH = TMP_FOLDER_PATH + "dist.csv"
+CALIB_TARGET = "labs_camera"
+
+TMP_FOLDER_PATH = "./res_" + CALIB_TARGET + "/"
+MTX_PATH = TMP_FOLDER_PATH + "mtx_" + CALIB_TARGET + ".csv"
+DIST_PATH = TMP_FOLDER_PATH + "dist_" + CALIB_TARGET + ".csv"
 
 # メイン関数
 def main():
@@ -25,7 +27,7 @@ def calcCamera():
     obj_points = []
     img_points = []
  
-    for fn in glob.glob("./img_labs_camera/*"):
+    for fn in glob.glob("./img_" + CALIB_TARGET + "/*"):
         # 画像の取得
         im = cv2.imread(fn,0)
         print ("loading..." + fn)

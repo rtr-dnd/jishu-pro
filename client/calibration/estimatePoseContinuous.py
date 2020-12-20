@@ -2,13 +2,15 @@ import csv
 import numpy as np
 import cv2 as cv
 import glob
+
+TARGET = "labs_camera"
 # Load previously saved data
 mtx = []
 dist = []
-with open('./res_labs_camera/mtx.csv') as f:
+with open('./res_' + TARGET + '/mtx_' + TARGET + '.csv') as f:
   reader = csv.reader(f)
   mtx = [row for row in reader]
-with open('./res_labs_camera/dist.csv') as f:
+with open('./res_' + TARGET + '/dist_' + TARGET + '.csv') as f:
   reader = csv.reader(f)
   for row in reader:
     dist = row
@@ -32,12 +34,11 @@ objp[:,:2] = np.mgrid[0:10,0:7].T.reshape(-1,2)
 objp = objp[..., np.newaxis]
 axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
 
-cap1 = cv.VideoCapture(1)
+cap1 = cv.VideoCapture(0)
 
 while True:
   ret, img = cap1.read()
   # img = cv.imread('./img_labs_camera/repr.png')
-  cv.imshow('raw', img)
   gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
   ret, corners = cv.findChessboardCorners(gray, (10, 7),None)
   if ret == True:
@@ -48,11 +49,13 @@ while True:
       # project 3D points to image plane
       imgpts, jac = cv.projectPoints(axis, rvecs, tvecs, mtx, dist)
       img = draw(img,corners2,imgpts)
-      cv.imshow('img',img)
+      cv.imshow('img_' + TARGET, img)
       if cv.waitKey(1) & 0xFF == ord('q'):
         print(ret)
         print(rvecs)
         print(tvecs)
+        np.savetxt('./pose_' + TARGET + '/rvecs_' + TARGET + '.csv', rvecs, delimiter=', ', fmt="%0.14f")
+        np.savetxt('./pose_' + TARGET + '/tvecs_' + TARGET + '.csv', tvecs, delimiter=', ', fmt="%0.14f")
         break
   else:
     print('not found')
