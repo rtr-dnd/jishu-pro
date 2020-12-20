@@ -34,23 +34,28 @@ axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
 
 cap1 = cv.VideoCapture(1)
 
-ret, img = cap1.read()
-# img = cv.imread('./img_labs_camera/repr.png')
-cv.imshow('raw', img)
-gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
-ret, corners = cv.findChessboardCorners(gray, (10, 7),None)
-if ret == True:
-    corners2 = np.squeeze(cv.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria))
-    corners2 = corners2[..., np.newaxis]
-    # Find the rotation and translation vectors.
-    ret,rvecs, tvecs = cv.solvePnP(objp, corners2, mtx, dist)
-    # project 3D points to image plane
-    imgpts, jac = cv.projectPoints(axis, rvecs, tvecs, mtx, dist)
-    img = draw(img,corners2,imgpts)
-    cv.imshow('img',img)
-    cv.waitKey(0)
-else:
-  print('not found')
+while True:
+  ret, img = cap1.read()
+  # img = cv.imread('./img_labs_camera/repr.png')
+  cv.imshow('raw', img)
+  gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
+  ret, corners = cv.findChessboardCorners(gray, (10, 7),None)
+  if ret == True:
+      corners2 = np.squeeze(cv.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria))
+      corners2 = corners2[..., np.newaxis]
+      # Find the rotation and translation vectors.
+      ret,rvecs, tvecs = cv.solvePnP(objp, corners2, mtx, dist)
+      # project 3D points to image plane
+      imgpts, jac = cv.projectPoints(axis, rvecs, tvecs, mtx, dist)
+      img = draw(img,corners2,imgpts)
+      cv.imshow('img',img)
+      if cv.waitKey(1) & 0xFF == ord('q'):
+        print(ret)
+        print(rvecs)
+        print(tvecs)
+        break
+  else:
+    print('not found')
 
 cap1.release()
 cv.destroyAllWindows()
