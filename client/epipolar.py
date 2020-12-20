@@ -6,8 +6,8 @@ import numpy as np
 print('epipolar')
 print('import finished')
 
-img1 = cv.imread('test_img/pen_1.jpg', 0)  # queryimage # left image
-img2 = cv.imread('test_img/pen_2.jpg', 0)  # trainimage # right image
+img1 = cv.imread('test_img/train_1.jpg', 0)  # queryimage # left image
+img2 = cv.imread('test_img/train_2.jpg', 0)  # trainimage # right image
 print('images read')
 
 sift = cv.SIFT_create()
@@ -69,6 +69,7 @@ def drawlines(img1, img2, lines, pts1, pts2):
 # Find epilines corresponding to points in right image (second image) and
 # drawing its lines on left image
 lines1 = cv.computeCorrespondEpilines(pts2.reshape(-1, 1, 2), 2, F)
+# lines: ax + by + c = 0 の(a, b, c)
 lines1 = lines1.reshape(-1, 3)
 print('lines1 below')
 print(lines1)
