@@ -42,7 +42,7 @@ def drawPoints(img, ptArr, rvecs, tvecs, mtx, dist):
   # print(ptArr_C)
   color = tuple([255, 255, 0])
   for pt_C in ptArr_C:
-    img = cv.circle(img, tuple(pt_C.ravel()), 3, color, -1)
+    img = cv.circle(img, tuple(pt_C.ravel()), 10, color, -1)
   return img
 
 def drawPoints_C(img, ptArr_C):
@@ -66,10 +66,8 @@ def calcWorldCoordinate(pt_C, rvecs, tvecs, mtx):
   res = np.dot(np.linalg.inv(cv.Rodrigues(rvecs)[0]), pt_CC - tvecs)
   return res
 
-
-def calcLineByS(s, o, a):
-  p = (1 - s) * o + s * a
-  return np.array(p)
+def calcLine(t, o, n):
+  return o + t * n
 
 
 # read parameters
@@ -92,39 +90,35 @@ origin = np.float32([[0, 0, 0]]).reshape(-1,3)
 axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
 testPoints = np.float32([[5, 0, 0], [0, 0, -3]]).reshape(-1, 3)
 
-coordTestArr_C = [[1100, 800, 1]]
+coordTestArr_C = [[650, 290, 1], [850, 490, 1]] # (u, v, 1)
 
 cap = []
 for i in range(0, len(TARGET)):
   cap.append(cv.VideoCapture(CAMPORT[i]))
 
 imgs = [[], []]
+a = [[], []]
+o = [[], []]
+n = [[], []]
+ptArr = [[], []] # i番目: i番目のカメラから見たときある点に見えるような線の集合（ワールド座標）
 
-# while loop (for debug)
 while True:
   for i in range(0, len(TARGET)):
     imgs[i] = cv.undistort(cap[i].read()[1], mtx[i], dist[i])
     imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
-  a = calcWorldCoordinate(coordTestArr_C[0], rvecs[1], tvecs[1], mtx[1])
-  o = calcWorldCoordinate([0, 0, 0], rvecs[1], tvecs[1], mtx[1])
-  # print('a below')
-  # print(a)
-  # print('o below')
-  # print(o)
-  ptArr = []
-  # for tmp in range(18, 19, 0.1):
-  for tmp in np.arange(17, 18, 0.1):
-    ptArr.append(calcLineByS(tmp, o, a))
-  ptArr = np.float32(np.array(ptArr)).reshape(-1, 3)
-  print(ptArr)
-  imgs[1] = drawPoints_C(imgs[1], coordTestArr_C)
-  imgs[0] = drawPoints(imgs[0], ptArr, rvecs[0], tvecs[0], mtx[0], dist[0])
-  cv.imshow('img_' + TARGET[0], imgs[0])
-  cv.imshow('img_' + TARGET[1], imgs[1])
+    a[i] = calcWorldCoordinate(coordTestArr_C[i], rvecs[i], tvecs[i], mtx[i]) #  カメラ座標で(x', y', 1)の世界座標
+    o[i] = calcWorldCoordinate([0, 0, 0], rvecs[i], tvecs[i], mtx[i]) # カメラ座標で(0, 0, 0)の世界座標
+    n[i] = (a[i] - o[i]) / np.linalg.norm(a[i] - o[i]) # 方向の単位ベクトル
+    ptArr[i] = []
+    for tmp in np.arange(10, 20, 1):
+      ptArr[i].append(calcLine(tmp, o[i], n[i]))
+    ptArr[i] = np.float32(np.array(ptArr[i])).reshape(-1, 3)
+  for i in range(0, len(TARGET)):
+    imgs[i] = drawPoints_C(imgs[i], [coordTestArr_C[i]])
+    imgs[i] = drawPoints(imgs[i], ptArr[not(i)], rvecs[i], tvecs[i], mtx[i], dist[i])
+    cv.imshow('img_' + TARGET[i], imgs[i])
   if cv.waitKey(1) & 0xFF == ord('q'):
       break
-
-
 
 for i in range(0, len(TARGET)):
   cap[i].release()
