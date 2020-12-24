@@ -34,6 +34,8 @@ void loop()
 {
   L6470_move(1, 500);   //正転
   L6470_busydelay(500); //2秒待つ
+  L6470_move(-1, 500);   //反転
+  L6470_busydelay(500); //2秒待つ
 }
 
 void L6470_setup()
