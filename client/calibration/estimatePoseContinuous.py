@@ -3,7 +3,7 @@ import numpy as np
 import cv2 as cv
 import glob
 
-TARGET = "right_cam"
+TARGET = "left_cam"
 # Load previously saved data
 mtx = []
 dist = []
@@ -41,10 +41,11 @@ objp = objp[..., np.newaxis]
 axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
 testPoint = np.float32([[5, 0, 0], [0, 0, -3]]).reshape(-1, 3)
 
-cap1 = cv.VideoCapture(2)
+cap1 = cv.VideoCapture(0)
 
 while True:
   ret, img = cap1.read()
+  img = cv.undistort(img, mtx, dist)
   # img = cv.imread('./img_labs_camera/repr.png')
   gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
   ret, corners = cv.findChessboardCorners(gray, (10, 7),None)

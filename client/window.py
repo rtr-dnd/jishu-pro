@@ -1,6 +1,6 @@
 import numpy as np
 import cv2 as cv
-cap1 = cv.VideoCapture(2)
+cap1 = cv.VideoCapture(0)
 cap2 = cv.VideoCapture(1)
 while(True):
     # Capture frame-by-frame
