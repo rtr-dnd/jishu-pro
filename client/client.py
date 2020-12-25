@@ -10,8 +10,36 @@ dist = np.zeros((len(TARGET), 5))
 rvecs = np.zeros((len(TARGET), 3))
 tvecs = np.zeros((len(TARGET), 3))
 
-
 # 記載なきときはワールド座標、Cがついていたらカメラ座標
+
+def findRedAreaCenter(img):
+  hsv_img = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+  mask1 = cv.inRange(hsv_img, (0, 120, 70), (5, 255, 255))
+  mask2 = cv.inRange(hsv_img, (175, 120, 70), (180, 255, 255))
+  mask = cv.bitwise_or(mask1, mask2)
+  masked_img = cv.bitwise_and(img, img, mask=mask)
+  contours, hierarchy = cv.findContours(mask, 1, 2)
+  contours.sort(key=lambda s: len(s))
+  cnt1 = contours[-1] # largest contour
+  cnt2 = contours[-2] #2nd largest contour
+
+  # simplified contour
+  # epsilon = 0.05 * cv.arcLength(cnt, True)
+  epsilon = 1
+
+  approx1 = cv.approxPolyDP(cnt1, epsilon, True)
+  M1 = cv.moments(approx1)
+  approx_center1 = [int(M1["m10"] / M1["m00"]), int(M1["m01"] / M1["m00"])] # gravity center of the largest contour
+
+  approx2 = cv.approxPolyDP(cnt2, epsilon, True)
+  M2 = cv.moments(approx2)
+  approx_center2 = [int(M2["m10"] / M2["m00"]), int(M2["m01"] / M2["m00"])] # gravity center of the 2nd largest contour
+
+  # masked_img = cv.drawContours(masked_img, [approx], 0, (0, 255, 0), 5)
+  # masked_img = cv.circle(masked_img, tuple(approx_center), 3, (0, 255, 0), -1)
+  # print(approx)
+  return approx_center1, approx_center2
+
 def drawVector(img, originArr, goalArr, rvecs, tvecs, mtx, dist):
   # corner = tuple(corners[0].ravel()) ## ワールド座標原点（二次元）
   origin_C = cv.projectPoints(originArr, rvecs, tvecs, mtx, dist)[0][0]
@@ -97,26 +125,42 @@ for i in range(0, len(TARGET)):
   cap.append(cv.VideoCapture(CAMPORT[i]))
 
 imgs = [[], []]
-a = [[], []]
-o = [[], []]
-n = [[], []]
-ptArr = [[], []] # i番目: i番目のカメラから見たときある点に見えるような線の集合（ワールド座標）
+a = [[], []] # i番目: i番目のカメラ座標で(x', y', 1)となる点の世界座標
+o = [[], []] # i番目: i番目のカメラ座標で(0, 0, 0)の世界座標
+n = [[], []] # i番目: i番目のカメラから目標点までの正規化済み方向ベクトル（世界座標）
+d = [[], []] # i番目: i番目のカメラからの最近点までの距離（世界座標）
+ptArr = [[], []] # i番目: i番目のカメラから見たときある点に見えるような線の集合（世界座標）
 
 while True:
+  # 直線を出す用
   for i in range(0, len(TARGET)):
     imgs[i] = cv.undistort(cap[i].read()[1], mtx[i], dist[i])
-    imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
+
+    # 直線を計算するために必要な情報
     a[i] = calcWorldCoordinate(coordTestArr_C[i], rvecs[i], tvecs[i], mtx[i]) #  カメラ座標で(x', y', 1)の世界座標
     o[i] = calcWorldCoordinate([0, 0, 0], rvecs[i], tvecs[i], mtx[i]) # カメラ座標で(0, 0, 0)の世界座標
     n[i] = (a[i] - o[i]) / np.linalg.norm(a[i] - o[i]) # 方向の単位ベクトル
-    ptArr[i] = []
-    for tmp in np.arange(10, 20, 1):
-      ptArr[i].append(calcLine(tmp, o[i], n[i]))
-    ptArr[i] = np.float32(np.array(ptArr[i])).reshape(-1, 3)
+ 
+  # 直線から空間上の点を出す用
   for i in range(0, len(TARGET)):
-    imgs[i] = drawPoints_C(imgs[i], [coordTestArr_C[i]])
-    imgs[i] = drawPoints(imgs[i], ptArr[not(i)], rvecs[i], tvecs[i], mtx[i], dist[i])
+    num1 = np.dot(n[i], o[not(i)] - o[i]) # 分子
+    num2 = np.dot(n[i], n[not(i)]) * np.dot(n[not(i)], o[not(i)] - o[i]) # 分子
+    den = 1 - np.dot(n[i], n[not(i)]) ** 2 # 分母
+    d[i] = (num1 - num2) / den
+    ptArr[i] = np.float32(np.array(o[i] + d[i] * n[i])).reshape(-1, 3)
+  
+  # print(ptArr)
+
+  # 描画用
+  for i in range(0, len(TARGET)):
+    # imgs[i] = drawPoints_C(imgs[i], [coordTestArr_C[i]])
+    # imgs[i] = drawPoints(imgs[i], ptArr[not(i)], rvecs[i], tvecs[i], mtx[i], dist[i])
+    red_centers = findRedAreaCenter(imgs[i])
+    imgs[i] = cv.circle(imgs[i], tuple(red_centers[0]), 10, (100, 255, 0), -1)
+    imgs[i] = cv.circle(imgs[i], tuple(red_centers[1]), 10, (100, 0, 255), -1)
+    imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
     cv.imshow('img_' + TARGET[i], imgs[i])
+
   if cv.waitKey(1) & 0xFF == ord('q'):
       break
 

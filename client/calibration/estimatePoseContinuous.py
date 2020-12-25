@@ -3,14 +3,14 @@ import numpy as np
 import cv2 as cv
 import glob
 
-TARGET = "left_cam"
+TARGET = "right_cam"
 # Load previously saved data
 mtx = []
 dist = []
-with open('./res_' + TARGET + '/mtx_' + TARGET + '.csv') as f:
+with open('res_' + TARGET + '/mtx_' + TARGET + '.csv') as f:
   reader = csv.reader(f)
   mtx = [row for row in reader]
-with open('./res_' + TARGET + '/dist_' + TARGET + '.csv') as f:
+with open('res_' + TARGET + '/dist_' + TARGET + '.csv') as f:
   reader = csv.reader(f)
   for row in reader:
     dist = row
@@ -41,7 +41,7 @@ objp = objp[..., np.newaxis]
 axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
 testPoint = np.float32([[5, 0, 0], [0, 0, -3]]).reshape(-1, 3)
 
-cap1 = cv.VideoCapture(0)
+cap1 = cv.VideoCapture(2)
 
 while True:
   ret, img = cap1.read()
