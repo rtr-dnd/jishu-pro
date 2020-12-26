@@ -1,16 +1,43 @@
 import csv
 import numpy as np
 import cv2 as cv
+import serial
+# from pynput import keyboard
 
 TARGET = ["right_cam", "left_cam"]
 CAMPORT = [0, 2]
-Z_OFFSET = -0.1 # 天板との接地点のz座標（世界座標）
+Z_OFFSET = 0.2 # 天板との接地点のz座標（世界座標）
+
+ser = serial.Serial("/dev/tty.usbserial-14130", 9600)
+
+# is_shiftkey_pressed = False
+
+# def on_press(key):
+#   try:
+#     print('alphanumeric key {0} pressed'.format(
+#       key.char))
+#   except AttributeError:
+#     print('special key {0} pressed'.format(
+#       key))
+#   if key == keyboard.Key.shift or key == keyboard.Key.shift_r:
+#     is_shiftkey_pressed = True
+
+# def on_release(key):
+#   if key == keyboard.Key.shift or key == keyboard.Key.shift_r:
+#     is_shiftkey_pressed = False
+#   if key == keyboard.Key.esc:
+#       # Stop listener
+#       return False
+
+# listener = keyboard.Listener(
+#     on_press=on_press,
+#     on_release=on_release)
+# listener.start()
 
 mtx = np.zeros((len(TARGET), 3, 3))
 dist = np.zeros((len(TARGET), 5))
 rvecs = np.zeros((len(TARGET), 3))
 tvecs = np.zeros((len(TARGET), 3))
-
 # 記載なきときはワールド座標、Cがついていたらカメラ座標
 
 def findMarkers(img):
@@ -144,6 +171,7 @@ d1 = [[], []] # i番目: i番目のカメラからの最近点までの距離（
 d2 = [[], []] # i番目: i番目のカメラからの最近点までの距離（世界座標）（下マーカー）
 ptArr1 = [[], []] # i番目: i番目のカメラから見たときある点に見えるような線の集合（世界座標）（上マーカー）
 ptArr2 = [[], []] # i番目: i番目のカメラから見たときある点に見えるような線の集合（世界座標）（下マーカー）
+destination = [] # shiftを押し始めたときのcontact point
 
 while True:
   # 直線を出す用
@@ -176,22 +204,35 @@ while True:
   avgpt1 = np.average(ptArr1, axis=0)
   avgpt2 = np.average(ptArr2, axis=0)
   cp = calcContactPoint(avgpt1.ravel(), avgpt2.ravel())
+  print(cp)
 
   # 描画用
   for i in range(0, len(TARGET)):
     # imgs[i] = drawPoints_C(imgs[i], [coordTestArr_C[i]])
-    imgs[i] = drawPoints(imgs[i], avgpt1, rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
-    imgs[i] = drawPoints(imgs[i], avgpt2, rvecs[i], tvecs[i], mtx[i], dist[i], (0, 255, 255))
+    # imgs[i] = drawPoints(imgs[i], avgpt1, rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
+    # imgs[i] = drawPoints(imgs[i], avgpt2, rvecs[i], tvecs[i], mtx[i], dist[i], (0, 255, 255))
+    imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][0][0:2]), 10, (100, 255, 0), -1)
+    imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
     imgs[i] = drawPoints(imgs[i], np.array([cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
-    # imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][0][0:2]), 10, (100, 255, 0), -1)
-    # imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
     imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
     cv.imshow('img_' + TARGET[i], imgs[i])
 
-  if cv.waitKey(1) & 0xFF == ord('q'):
-      break
+  k = cv.waitKey(1)
+  if k == ord('r'): # reset
+    destination = cp
+    print('reset')
+  elif k == ord('f'): #forward
+    print('forward')
+    ser.write(bytes('0', 'utf-8'))
+  elif k == ord('b'): #forward
+    print('backward')
+    ser.write(bytes('1', 'utf-8'))
+  elif k == ord('q'):
+    break
+
 
 for i in range(0, len(TARGET)):
   cap[i].release()
 cv.destroyAllWindows()
+ser.close()
 

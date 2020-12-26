@@ -8,6 +8,8 @@
 #define PIN_SPI_SS 10
 #define PIN_BUSY 9
 
+int input = -1;
+
 void setup()
 {
   delay(1000);
@@ -32,10 +34,31 @@ void setup()
 
 void loop()
 {
-  L6470_move(1, 500);   //正転
-  L6470_busydelay(500); //2秒待つ
-  L6470_move(-1, 500);   //反転
-  L6470_busydelay(500); //2秒待つ
+  input = Serial.read();
+  if (input != -1)
+  {
+    switch (input)
+    {
+    case '0':
+      Serial.print("registered");
+      L6470_move(1, 3000);  //正転
+      L6470_busydelay(500); //2秒待つ
+      break;
+    case '1':
+      Serial.print("registered");
+      L6470_move(-1, 3000); //反転
+      L6470_busydelay(500); //2秒待つ
+      break;
+    default:
+      break;
+    }
+  }
+  // L6470_move(1, 5000);  //正転
+  // L6470_busydelay(500); //2秒待つ
+  // L6470_move(-1, 2000); //反転
+  // L6470_busydelay(500); //2秒待つ
+  // L6470_move(-1, 3000); //反転
+  // L6470_busydelay(500); //2秒待つ
 }
 
 void L6470_setup()
