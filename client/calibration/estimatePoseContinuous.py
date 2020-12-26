@@ -3,7 +3,7 @@ import numpy as np
 import cv2 as cv
 import glob
 
-TARGET = "right_cam"
+TARGET = "left_cam"
 # Load previously saved data
 mtx = []
 dist = []

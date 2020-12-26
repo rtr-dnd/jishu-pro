@@ -4,7 +4,7 @@
 import cv2
 from datetime import datetime
 
-TARGET = "right_cam"
+TARGET = "left_cam"
 cap = cv2.VideoCapture(2) # 任意のカメラ番号に変更する
 
 while True:

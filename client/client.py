@@ -2,8 +2,9 @@ import csv
 import numpy as np
 import cv2 as cv
 
-TARGET = ["left_cam", "right_cam"]
+TARGET = ["right_cam", "left_cam"]
 CAMPORT = [0, 2]
+Z_OFFSET = -0.1 # 天板との接地点のz座標（世界座標）
 
 mtx = np.zeros((len(TARGET), 3, 3))
 dist = np.zeros((len(TARGET), 5))
@@ -14,8 +15,8 @@ tvecs = np.zeros((len(TARGET), 3))
 
 def findMarkers(img):
   hsv_img = cv.cvtColor(img, cv.COLOR_BGR2HSV)
-  mask1 = cv.inRange(hsv_img, (0, 120, 70), (5, 255, 255))
-  mask2 = cv.inRange(hsv_img, (175, 120, 70), (180, 255, 255))
+  mask1 = cv.inRange(hsv_img, (0, 160, 70), (5, 255, 255))
+  mask2 = cv.inRange(hsv_img, (175, 160, 70), (180, 255, 255))
   mask = cv.bitwise_or(mask1, mask2)
   masked_img = cv.bitwise_and(img, img, mask=mask)
   contours, hierarchy = cv.findContours(mask, 1, 2)
@@ -99,6 +100,11 @@ def calcWorldCoordinate(pt_C, rvecs, tvecs, mtx):
 def calcLine(t, o, n):
   return o + t * n
 
+def calcContactPoint(upper, lower):
+  x0 = ((upper[2] - Z_OFFSET) * lower[0] - (lower[2] - Z_OFFSET) * upper[0]) / (upper[2] - lower[2])
+  y0 = ((upper[2] - Z_OFFSET) * lower[1] - (lower[2] - Z_OFFSET) * upper[1]) / (upper[2] - lower[2])
+  return np.float32(np.array([x0, y0, Z_OFFSET]))
+
 
 # read parameters
 for i in range(0, len(TARGET)):
@@ -169,18 +175,18 @@ while True:
   # print(ptArr1)
   avgpt1 = np.average(ptArr1, axis=0)
   avgpt2 = np.average(ptArr2, axis=0)
-  print(avgpt1)
-  print(avgpt2)
+  cp = calcContactPoint(avgpt1.ravel(), avgpt2.ravel())
 
   # 描画用
   for i in range(0, len(TARGET)):
     # imgs[i] = drawPoints_C(imgs[i], [coordTestArr_C[i]])
     imgs[i] = drawPoints(imgs[i], avgpt1, rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
     imgs[i] = drawPoints(imgs[i], avgpt2, rvecs[i], tvecs[i], mtx[i], dist[i], (0, 255, 255))
-    # imgs[i] = cv.circle(imgs[i], tuple(red_centers[0]), 10, (100, 255, 0), -1)
-    # imgs[i] = cv.circle(imgs[i], tuple(red_centers[1]), 10, (100, 0, 255), -1)
+    imgs[i] = drawPoints(imgs[i], np.array([cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
+    # imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][0][0:2]), 10, (100, 255, 0), -1)
+    # imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
     imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
-    # cv.imshow('img_' + TARGET[i], imgs[i])
+    cv.imshow('img_' + TARGET[i], imgs[i])
 
   if cv.waitKey(1) & 0xFF == ord('q'):
       break
