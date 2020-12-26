@@ -7,6 +7,7 @@ import serial
 TARGET = ["right_cam", "left_cam"]
 CAMPORT = [0, 2]
 Z_OFFSET = 0.2 # 天板との接地点のz座標（世界座標）
+MOTOR_UNIT = 9650 # 1マス分のモーターステップ数
 
 ser = serial.Serial("/dev/tty.usbserial-14130", 9600)
 
@@ -48,6 +49,8 @@ def findMarkers(img):
   masked_img = cv.bitwise_and(img, img, mask=mask)
   contours, hierarchy = cv.findContours(mask, 1, 2)
   contours.sort(key=lambda s: len(s))
+  if (len(contours) < 2):
+    return [False]
   cnt1 = contours[-1] # largest contour
   cnt2 = contours[-2] #2nd largest contour
 
@@ -57,19 +60,23 @@ def findMarkers(img):
 
   approx1 = cv.approxPolyDP(cnt1, epsilon, True)
   M1 = cv.moments(approx1)
+  if (M1["m00"] == 0.0):
+    return [False]
   approx_center1 = [int(M1["m10"] / M1["m00"]), int(M1["m01"] / M1["m00"]), 1] # gravity center of the largest contour
 
   approx2 = cv.approxPolyDP(cnt2, epsilon, True)
   M2 = cv.moments(approx2)
+  if (M2["m00"] == 0.0):
+    return [False]
   approx_center2 = [int(M2["m10"] / M2["m00"]), int(M2["m01"] / M2["m00"]), 1] # gravity center of the 2nd largest contour
 
   # masked_img = cv.drawContours(masked_img, [approx], 0, (0, 255, 0), 5)
   # masked_img = cv.circle(masked_img, tuple(approx_center), 3, (0, 255, 0), -1)
   # print(approx)
   if (approx_center1[1] < approx_center2[1]): # スクリーン座標で上にあるやつが一番大きいとき
-    return [approx_center1, approx_center2] # 0番目: ペンの上側マーカー 1番目: 下側マーカー
+    return [True, [approx_center1, approx_center2]] # 0番目: ペンの上側マーカー 1番目: 下側マーカー
   else:
-    return [approx_center2, approx_center1]
+    return [True, [approx_center2, approx_center1]]
 
 def drawVector(img, originArr, goalArr, rvecs, tvecs, mtx, dist):
   # corner = tuple(corners[0].ravel()) ## ワールド座標原点（二次元）
@@ -161,6 +168,7 @@ for i in range(0, len(TARGET)):
 
 imgs = [[], []]
 red_centers = [[], []] # i番目: i番目のカメラに映るマーカーの中心座標×2（スクリーン座標u, v, 1）
+markersDetected = False
 o = [[], []] # i番目: i番目のカメラ座標で(0, 0, 0)の世界座標
 
 a1 = [[], []] # i番目: i番目のカメラ座標で(x', y', 1)となる点の世界座標（上マーカー）
@@ -177,7 +185,14 @@ while True:
   # 直線を出す用
   for i in range(0, len(TARGET)):
     imgs[i] = cv.undistort(cap[i].read()[1], mtx[i], dist[i])
-    red_centers[i] = findMarkers(imgs[i])
+    
+    temp = findMarkers(imgs[i])
+    if (temp[0]):
+      markersDetected = True
+    else:
+      markersDetected = False
+      break
+    red_centers[i] = temp[1]
 
     # 直線を計算するために必要な情報
     o[i] = calcWorldCoordinate([0, 0, 0], rvecs[i], tvecs[i], mtx[i]) # カメラ座標で(0, 0, 0)の世界座標
@@ -185,7 +200,11 @@ while True:
     a2[i] = calcWorldCoordinate(red_centers[i][1], rvecs[i], tvecs[i], mtx[i]) #  カメラ座標で(x', y', 1)の世界座標
     n1[i] = (a1[i] - o[i]) / np.linalg.norm(a1[i] - o[i]) # 方向の単位ベクトル
     n2[i] = (a2[i] - o[i]) / np.linalg.norm(a2[i] - o[i]) # 方向の単位ベクトル
- 
+  
+  if (not(markersDetected)):
+    print('markers not detected')
+    continue
+
   # 直線から空間上の点を出す用
   for i in range(0, len(TARGET)):
     num1 = np.dot(n1[i], o[not(i)] - o[i]) # 分子
@@ -204,7 +223,7 @@ while True:
   avgpt1 = np.average(ptArr1, axis=0)
   avgpt2 = np.average(ptArr2, axis=0)
   cp = calcContactPoint(avgpt1.ravel(), avgpt2.ravel())
-  print(cp)
+  # print(cp)
 
   # 描画用
   for i in range(0, len(TARGET)):
@@ -218,15 +237,23 @@ while True:
     cv.imshow('img_' + TARGET[i], imgs[i])
 
   k = cv.waitKey(1)
-  if k == ord('r'): # reset
+  if k == ord('s'): # set destination
     destination = cp
-    print('reset')
-  elif k == ord('f'): #forward
-    print('forward')
-    ser.write(bytes('0', 'utf-8'))
-  elif k == ord('b'): #forward
-    print('backward')
-    ser.write(bytes('1', 'utf-8'))
+    print('set')
+    print(destination)
+  elif k == ord('f'): # follow destination
+    temp_val = str(int((destination[1] - cp[1]) * MOTOR_UNIT)) + 'a'
+    print(temp_val)
+    ser.write(bytes(temp_val, 'utf-8'))
+    destination = cp
+    print('followed and set')
+    print(destination)
+  elif k == ord('u'): # up、奥
+    print('up')
+    ser.write(bytes(str(MOTOR_UNIT) + 'a', 'utf-8'))
+  elif k == ord('d'): # down、手前
+    print('down')
+    ser.write(bytes('-' + str(MOTOR_UNIT) + 'a', 'utf-8'))
   elif k == ord('q'):
     break
 

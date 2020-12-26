@@ -9,6 +9,8 @@
 #define PIN_BUSY 9
 
 int input = -1;
+int direction = 1;
+int buf = 0;
 
 void setup()
 {
@@ -39,16 +41,49 @@ void loop()
   {
     switch (input)
     {
+    case '-':
+      direction = -1;
     case '0':
-      Serial.print("registered");
-      L6470_move(1, 3000);  //正転
-      L6470_busydelay(500); //2秒待つ
+      buf = 0 + buf * 10;
       break;
     case '1':
-      Serial.print("registered");
-      L6470_move(-1, 3000); //反転
-      L6470_busydelay(500); //2秒待つ
+      buf = 1 + buf * 10;
       break;
+    case '2':
+      buf = 2 + buf * 10;
+      break;
+    case '3':
+      buf = 3 + buf * 10;
+      break;
+    case '4':
+      buf = 4 + buf * 10;
+      break;
+    case '5':
+      buf = 5 + buf * 10;
+      break;
+    case '6':
+      buf = 6 + buf * 10;
+      break;
+    case '7':
+      buf = 7 + buf * 10;
+      break;
+    case '8':
+      buf = 8 + buf * 10;
+      break;
+    case '9':
+      buf = 9 + buf * 10;
+      break;
+    case 'a':
+      Serial.print("registered");
+      Serial.print(direction);
+      Serial.print(buf);
+      L6470_move(direction, buf); //反転
+      L6470_busydelay(500);       //2秒待つ
+      buf = 0;
+      direction = 1;
+    case 'r':
+      buf = 0;
+      direction = 1;
     default:
       break;
     }
