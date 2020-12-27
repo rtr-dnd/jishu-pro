@@ -182,6 +182,7 @@ ptArr1 = [[], []] # i番目: i番目のカメラから見たときある点に�
 ptArr2 = [[], []] # i番目: i番目のカメラから見たときある点に見えるような線の集合（世界座標）（下マーカー）
 destination = [] # shiftを押し始めたときのcontact point
 abs_pos = 0 # 起動したときを0とした絶対位置（ステップ数）
+motor_loop_interval = 3
 
 while True:
   # 直線を出す用
@@ -226,6 +227,28 @@ while True:
   avgpt2 = np.average(ptArr2, axis=0)
   cp = calcContactPoint(avgpt1.ravel(), avgpt2.ravel())
   # print(cp)
+  motor_loop_interval -= 1
+  print(motor_loop_interval)
+  if (motor_loop_interval < 0):
+    print(cp)
+    motor_loop_interval = 3
+    if (destination == []):
+      print('destination not set')
+      continue
+    temp_val = int((destination[1] - cp[1]) * MOTOR_UNIT)
+    if (abs_pos + temp_val > MOTOR_UNIT * MOTOR_MARGIN):
+      print('overflowed: too high')
+      continue
+    elif (abs_pos + temp_val < -MOTOR_UNIT * MOTOR_MARGIN):
+      print('overflowed: too low')
+      continue
+
+    abs_pos += temp_val
+    print(abs_pos)
+    ser.write(bytes(str(temp_val) + 'a', 'utf-8'))
+    destination = cp
+    print('followed and set')
+    print(destination)
 
   # 描画用
   for i in range(0, len(TARGET)):
@@ -244,6 +267,9 @@ while True:
     print('set')
     print(destination)
   elif k == ord('f'): # follow destination
+    if (destination == []):
+      print('destination not set')
+      continue
     temp_val = int((destination[1] - cp[1]) * MOTOR_UNIT)
     if (abs_pos + temp_val > MOTOR_UNIT * MOTOR_MARGIN):
       print('overflowed: too high')
@@ -258,12 +284,14 @@ while True:
     destination = cp
     print('followed and set')
     print(destination)
+  elif k == ord('r'): # reset
+    destination = []
   elif k == ord('u'): # up、奥
     print('up')
-    ser.write(bytes(str(MOTOR_UNIT) + 'a', 'utf-8'))
+    ser.write(bytes(str(int(MOTOR_UNIT * 0.1)) + 'a', 'utf-8'))
   elif k == ord('d'): # down、手前
     print('down')
-    ser.write(bytes('-' + str(MOTOR_UNIT) + 'a', 'utf-8'))
+    ser.write(bytes('-' + str(int(MOTOR_UNIT * 0.1)) + 'a', 'utf-8'))
   elif k == ord('q'):
     break
 
