@@ -8,6 +8,7 @@ TARGET = ["right_cam", "left_cam"]
 CAMPORT = [0, 2]
 Z_OFFSET = 0.2 # 天板との接地点のz座標（世界座標）
 MOTOR_UNIT = 9650 # 1マス分のモーターステップ数
+MOTOR_MARGIN = 2.2 # モーターの可動域（何マスか）
 
 ser = serial.Serial("/dev/tty.usbserial-14130", 9600)
 
@@ -180,6 +181,7 @@ d2 = [[], []] # i番目: i番目のカメラからの最近点までの距離（
 ptArr1 = [[], []] # i番目: i番目のカメラから見たときある点に見えるような線の集合（世界座標）（上マーカー）
 ptArr2 = [[], []] # i番目: i番目のカメラから見たときある点に見えるような線の集合（世界座標）（下マーカー）
 destination = [] # shiftを押し始めたときのcontact point
+abs_pos = 0 # 起動したときを0とした絶対位置（ステップ数）
 
 while True:
   # 直線を出す用
@@ -242,9 +244,17 @@ while True:
     print('set')
     print(destination)
   elif k == ord('f'): # follow destination
-    temp_val = str(int((destination[1] - cp[1]) * MOTOR_UNIT)) + 'a'
-    print(temp_val)
-    ser.write(bytes(temp_val, 'utf-8'))
+    temp_val = int((destination[1] - cp[1]) * MOTOR_UNIT)
+    if (abs_pos + temp_val > MOTOR_UNIT * MOTOR_MARGIN):
+      print('overflowed: too high')
+      continue
+    elif (abs_pos + temp_val < -MOTOR_UNIT * MOTOR_MARGIN):
+      print('overflowed: too low')
+      continue
+
+    abs_pos += temp_val
+    print(abs_pos)
+    ser.write(bytes(str(temp_val) + 'a', 'utf-8'))
     destination = cp
     print('followed and set')
     print(destination)
