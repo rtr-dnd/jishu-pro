@@ -107,14 +107,6 @@ void loop()
       bin = bin << 4;
       bin += 15;
       break;
-    case 'b':
-      L6470_hardstop_u();
-      L6470_goto_u(0x3FDA80);
-      break;
-    case 'c':
-      L6470_hardstop_u();
-      L6470_goto_u(0x1F40);
-      break;
     case 'd':
       L6470_move(-1, 1000);
       break;
@@ -127,6 +119,14 @@ void loop()
     case 'r':
       bin = 0;
       L6470_resetpos();
+      break;
+    case 'x':
+      L6470_hardstop_u();
+      L6470_goto_u(0x3FDA80);
+      break;
+    case 'y':
+      L6470_hardstop_u();
+      L6470_goto_u(0x1F40);
       break;
     case 'z':
       Serial.print("registered\n");

@@ -109,7 +109,7 @@ def drawPoints(img, ptArr, rvecs, tvecs, mtx, dist, color):
   ptArr_C = cv.projectPoints(ptArr, rvecs, tvecs, mtx, dist)[0]
   # print(ptArr_C)
   for pt_C in ptArr_C:
-    img = cv.circle(img, tuple(pt_C.ravel()), 10, color, -1)
+    img = cv.circle(img, tuple(pt_C.astype(int).ravel()), 10, color, -1)
   return img
 
 def drawPoints_C(img, ptArr_C):
@@ -141,6 +141,13 @@ def calcContactPoint(upper, lower):
   y0 = ((upper[2] - Z_OFFSET) * lower[1] - (lower[2] - Z_OFFSET) * upper[1]) / (upper[2] - lower[2])
   return np.float32(np.array([x0, y0, Z_OFFSET]))
 
+def sendPos(pos):
+  hex_val = ''
+  if (pos >= 0):
+    hex_val = hex(pos)
+  else:
+    hex_val = hex((1<<22) + pos)
+  ser.write(bytes(hex_val[2:].upper() + 'z', 'utf-8'))
 
 # read parameters
 for i in range(0, len(TARGET)):
@@ -235,35 +242,34 @@ while True:
   avgpt2 = np.average(ptArr2, axis=0)
   cp = calcContactPoint(avgpt1.ravel(), avgpt2.ravel())
   # print(cp)
-  motor_loop_interval -= 1
-  # print(motor_loop_interval)
-  if (motor_loop_interval < 0):
-    print(cp)
-    motor_loop_interval = 0
-    if (destination == []):
-      print('destination not set')
-    else:
-      if (abs(prev_cp[1] - cp[1]) > 0.5):
-        print('maybe detection error')
-        print(prev_cp[1])
-        print(cp[1])
-      else:
-        temp_val = int((destination[1] - cp[1]) * MOTOR_UNIT)
-        print('temp_val ' + str(temp_val))
-        if (abs_pos + temp_val > MOTOR_UNIT * MOTOR_MARGIN):
-          print('overflowed: too high')
-        elif (abs_pos + temp_val < -MOTOR_UNIT * MOTOR_MARGIN):
-          print('overflowed: too low')
-        else:
-          smooth_val = (1 - param_a) * smooth_val + param_a * temp_val
-          abs_pos += int(smooth_val)
-          prev_cp = cp
-          print('abs_pos ' + str(abs_pos))
-          print('smooth_val ' + str(smooth_val))
-          # ser.write(bytes(str(int(smooth_val)) + 'a', 'utf-8'))
-          # destination = cp
-          print('followed and set')
-          print(destination)
+  # motor_loop_interval -= 1
+  # if (motor_loop_interval < 0):
+  #   print(cp)
+  #   motor_loop_interval = 0
+  #   if (destination == []):
+  #     print('destination not set')
+  #   else:
+  #     if (abs(prev_cp[1] - cp[1]) > 0.5):
+  #       print('maybe detection error')
+  #       print(prev_cp[1])
+  #       print(cp[1])
+  #     else:
+  #       temp_val = int((destination[1] - cp[1]) * MOTOR_UNIT)
+  #       print('temp_val ' + str(temp_val))
+  #       if (abs_pos + temp_val > MOTOR_UNIT * MOTOR_MARGIN):
+  #         print('overflowed: too high')
+  #       elif (abs_pos + temp_val < -MOTOR_UNIT * MOTOR_MARGIN):
+  #         print('overflowed: too low')
+  #       else:
+  #         smooth_val = (1 - param_a) * smooth_val + param_a * temp_val
+  #         abs_pos += int(smooth_val)
+  #         prev_cp = cp
+  #         print('abs_pos ' + str(abs_pos))
+  #         print('smooth_val ' + str(smooth_val))
+  #         # ser.write(bytes(str(int(smooth_val)) + 'a', 'utf-8'))
+  #         # destination = cp
+  #         print('followed and set')
+  #         print(destination)
 
   # 描画用
   for i in range(0, len(TARGET)):
@@ -283,10 +289,10 @@ while True:
     prev_cp = cp
     print('set')
     print(destination)
-  # elif k == ord('f'): # follow destination
-  #   if (destination == []):
-  #     print('destination not set')
-  #     continue
+  elif k == ord('f'): # follow destination
+    if (destination == []):
+      print('destination not set')
+      continue
   #   temp_val = int((destination[1] - cp[1]) * MOTOR_UNIT)
   #   if (abs_pos + temp_val > MOTOR_UNIT * MOTOR_MARGIN):
   #     print('overflowed: too high')
@@ -301,15 +307,28 @@ while True:
   #   destination = cp
   #   print('followed and set')
   #   print(destination)
+  elif k == ord('x'):
+    print('sending val x')
+    sendPos(9600)
+  elif k == ord('y'):
+    print('sending val y')
+    sendPos(-9600)
   elif k == ord('r'): # reset
+    print('reset')
     destination = []
+    ser.write(bytes('r', 'utf-8'))
   elif k == ord('u'): # up、奥
     print('up')
-    # ser.write(bytes(str(int(MOTOR_UNIT * 0.1)) + 'a', 'utf-8'))
-  elif k == ord('d'): # down、手前
-    print('down')
-    # ser.write(bytes('-' + str(int(MOTOR_UNIT * 0.1)) + 'a', 'utf-8'))
-    ser.write(bytes('1F40z', 'utf-8'))
+    ser.write(bytes('u', 'utf-8'))
+  elif k == ord('c'): # up、奥
+    destination = []
+    print('clear destination')
+  elif k == ord('d'): # up、奥
+    print('up')
+    ser.write(bytes('d', 'utf-8'))
+  elif k == ord('h'): # up、奥
+    print('home')
+    ser.write(bytes('h', 'utf-8'))
   elif k == ord('q'):
     break
 
