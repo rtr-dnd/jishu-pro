@@ -2,6 +2,7 @@ import csv
 import numpy as np
 import cv2 as cv
 import serial
+import threading
 # from pynput import keyboard
 
 TARGET = ["right_cam", "left_cam"]
@@ -149,6 +150,10 @@ def sendPos(pos):
     hex_val = hex((1<<22) + pos)
   ser.write(bytes(hex_val[2:].upper() + 'z', 'utf-8'))
 
+def fasterForLoop(ser):
+  while(True):
+    print(repr(ser.readline().decode()))
+
 # read parameters
 for i in range(0, len(TARGET)):
   with open('calibration/res_' + TARGET[i] + '/mtx_' + TARGET[i] + '.csv') as f:
@@ -195,8 +200,12 @@ prev_cp = [] # maybe error detction用
 smooth_val = 0 # ローパスフィルタ用（ステップ数）
 param_a = 0.3 # ローパスフィルタ用係数
 
-blank_image = np.zeros(shape=[512, 512, 3], dtype=np.uint8)
-cv.imshow('blank', blank_image)
+# blank_image = np.zeros(shape=[512, 512, 3], dtype=np.uint8)
+# cv.imshow('blank', blank_image)
+
+thread = threading.Thread(target=fasterForLoop, args=(ser,))
+thread.setDaemon(True)
+thread.start()
 
 
 while True:
@@ -281,7 +290,8 @@ while True:
     imgs[i] = drawPoints(imgs[i], np.array([cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
     imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
     cv.imshow('img_' + TARGET[i], imgs[i])
-    cv.imshow('blank', blank_image)
+    # cv.imshow('blank', blank_image)
+
 
   k = cv.waitKey(1)
   if k == ord('s'): # set destination
