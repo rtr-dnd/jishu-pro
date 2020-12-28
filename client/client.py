@@ -8,7 +8,7 @@ TARGET = ["right_cam", "left_cam"]
 CAMPORT = [0, 2]
 Z_OFFSET = 0.2 # 天板との接地点のz座標（世界座標）
 MOTOR_UNIT = 9650 # 1マス分のモーターステップ数
-MOTOR_MARGIN = 2.2 # モーターの可動域（何マスか）
+MOTOR_MARGIN = 2.0 # モーターの可動域（何マスか）
 
 ser = serial.Serial("/dev/tty.usbserial-14130", 9600)
 
@@ -44,9 +44,10 @@ tvecs = np.zeros((len(TARGET), 3))
 
 def findMarkers(img):
   hsv_img = cv.cvtColor(img, cv.COLOR_BGR2HSV)
-  mask1 = cv.inRange(hsv_img, (0, 160, 70), (5, 255, 255))
-  mask2 = cv.inRange(hsv_img, (175, 160, 70), (180, 255, 255))
-  mask = cv.bitwise_or(mask1, mask2)
+  # mask1 = cv.inRange(hsv_img, (0, 160, 70), (5, 255, 255))
+  # mask2 = cv.inRange(hsv_img, (175, 160, 70), (180, 255, 255))
+  # mask = cv.bitwise_or(mask1, mask2)
+  mask = cv.inRange(hsv_img, (36, 100, 50), (86, 255, 255))
   masked_img = cv.bitwise_and(img, img, mask=mask)
   contours, hierarchy = cv.findContours(mask, 1, 2)
   contours.sort(key=lambda s: len(s))
@@ -182,7 +183,14 @@ ptArr1 = [[], []] # i番目: i番目のカメラから見たときある点に�
 ptArr2 = [[], []] # i番目: i番目のカメラから見たときある点に見えるような線の集合（世界座標）（下マーカー）
 destination = [] # shiftを押し始めたときのcontact point
 abs_pos = 0 # 起動したときを0とした絶対位置（ステップ数）
-motor_loop_interval = 3
+motor_loop_interval = 0
+prev_cp = [] # maybe error detction用
+smooth_val = 0 # ローパスフィルタ用（ステップ数）
+param_a = 0.3 # ローパスフィルタ用係数
+
+blank_image = np.zeros(shape=[512, 512, 3], dtype=np.uint8)
+cv.imshow('blank', blank_image)
+
 
 while True:
   # 直線を出す用
@@ -228,27 +236,34 @@ while True:
   cp = calcContactPoint(avgpt1.ravel(), avgpt2.ravel())
   # print(cp)
   motor_loop_interval -= 1
-  print(motor_loop_interval)
+  # print(motor_loop_interval)
   if (motor_loop_interval < 0):
     print(cp)
-    motor_loop_interval = 3
+    motor_loop_interval = 0
     if (destination == []):
       print('destination not set')
-      continue
-    temp_val = int((destination[1] - cp[1]) * MOTOR_UNIT)
-    if (abs_pos + temp_val > MOTOR_UNIT * MOTOR_MARGIN):
-      print('overflowed: too high')
-      continue
-    elif (abs_pos + temp_val < -MOTOR_UNIT * MOTOR_MARGIN):
-      print('overflowed: too low')
-      continue
-
-    abs_pos += temp_val
-    print(abs_pos)
-    ser.write(bytes(str(temp_val) + 'a', 'utf-8'))
-    destination = cp
-    print('followed and set')
-    print(destination)
+    else:
+      if (abs(prev_cp[1] - cp[1]) > 0.5):
+        print('maybe detection error')
+        print(prev_cp[1])
+        print(cp[1])
+      else:
+        temp_val = int((destination[1] - cp[1]) * MOTOR_UNIT)
+        print('temp_val ' + str(temp_val))
+        if (abs_pos + temp_val > MOTOR_UNIT * MOTOR_MARGIN):
+          print('overflowed: too high')
+        elif (abs_pos + temp_val < -MOTOR_UNIT * MOTOR_MARGIN):
+          print('overflowed: too low')
+        else:
+          smooth_val = (1 - param_a) * smooth_val + param_a * temp_val
+          abs_pos += int(smooth_val)
+          prev_cp = cp
+          print('abs_pos ' + str(abs_pos))
+          print('smooth_val ' + str(smooth_val))
+          ser.write(bytes(str(int(smooth_val)) + 'a', 'utf-8'))
+          # destination = cp
+          print('followed and set')
+          print(destination)
 
   # 描画用
   for i in range(0, len(TARGET)):
@@ -260,30 +275,32 @@ while True:
     imgs[i] = drawPoints(imgs[i], np.array([cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
     imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
     cv.imshow('img_' + TARGET[i], imgs[i])
+    cv.imshow('blank', blank_image)
 
   k = cv.waitKey(1)
   if k == ord('s'): # set destination
     destination = cp
+    prev_cp = cp
     print('set')
     print(destination)
-  elif k == ord('f'): # follow destination
-    if (destination == []):
-      print('destination not set')
-      continue
-    temp_val = int((destination[1] - cp[1]) * MOTOR_UNIT)
-    if (abs_pos + temp_val > MOTOR_UNIT * MOTOR_MARGIN):
-      print('overflowed: too high')
-      continue
-    elif (abs_pos + temp_val < -MOTOR_UNIT * MOTOR_MARGIN):
-      print('overflowed: too low')
-      continue
+  # elif k == ord('f'): # follow destination
+  #   if (destination == []):
+  #     print('destination not set')
+  #     continue
+  #   temp_val = int((destination[1] - cp[1]) * MOTOR_UNIT)
+  #   if (abs_pos + temp_val > MOTOR_UNIT * MOTOR_MARGIN):
+  #     print('overflowed: too high')
+  #     continue
+  #   elif (abs_pos + temp_val < -MOTOR_UNIT * MOTOR_MARGIN):
+  #     print('overflowed: too low')
+  #     continue
 
-    abs_pos += temp_val
-    print(abs_pos)
-    ser.write(bytes(str(temp_val) + 'a', 'utf-8'))
-    destination = cp
-    print('followed and set')
-    print(destination)
+  #   abs_pos += temp_val
+  #   print(abs_pos)
+  #   ser.write(bytes(str(temp_val) + 'a', 'utf-8'))
+  #   destination = cp
+  #   print('followed and set')
+  #   print(destination)
   elif k == ord('r'): # reset
     destination = []
   elif k == ord('u'): # up、奥
@@ -294,6 +311,8 @@ while True:
     ser.write(bytes('-' + str(int(MOTOR_UNIT * 0.1)) + 'a', 'utf-8'))
   elif k == ord('q'):
     break
+
+  print('---------')
 
 
 for i in range(0, len(TARGET)):

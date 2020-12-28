@@ -8,6 +8,8 @@
 #define PIN_SPI_SS 10
 #define PIN_BUSY 9
 
+#define UPPER_LIMIT 0x3D22
+
 int input = -1;
 int direction = 1;
 int buf = 0;
@@ -43,6 +45,7 @@ void loop()
     {
     case '-':
       direction = -1;
+      break;
     case '0':
       buf = 0 + buf * 10;
       break;
@@ -77,12 +80,25 @@ void loop()
       Serial.print("registered");
       Serial.print(direction);
       Serial.print(buf);
-      L6470_move(direction, buf); //反転
+      if ((buf < 20000) && (buf > -20000))
+      {
+        L6470_move(direction, buf); //反転
+      }
       buf = 0;
       direction = 1;
+      break;
+    case 'b':
+      L6470_hardstop_u();
+      L6470_goto_u(0x3FDA80);
+      break;
+    case 'c':
+      L6470_hardstop_u();
+      L6470_goto_u(0x1F40);
+      break;
     case 'r':
       buf = 0;
       direction = 1;
+      break;
     default:
       break;
     }
@@ -97,9 +113,9 @@ void loop()
 
 void L6470_setup()
 {
-  L6470_setparam_acc(0x8A);      //[R, WS] 加速度default 0x08A (12bit) (14.55*val+14.55[step/s^2])
-  L6470_setparam_dec(0x8A);      //[R, WS] 減速度default 0x08A (12bit) (14.55*val+14.55[step/s^2])
-  L6470_setparam_maxspeed(0x40); //[R, WR]最大速度default 0x041 (10bit) (15.25*val+15.25[step/s])
+  L6470_setparam_acc(0x400);     //[R, WS] 加速度default 0x08A (12bit) (14.55*val+14.55[step/s^2])
+  L6470_setparam_dec(0x400);     //[R, WS] 減速度default 0x08A (12bit) (14.55*val+14.55[step/s^2])
+  L6470_setparam_maxspeed(0x80); //[R, WR]最大速度default 0x041 (10bit) (15.25*val+15.25[step/s])
   L6470_setparam_minspeed(0x01); //[R, WS]最小速度default 0x000 (1+12bit) (0.238*val[step/s])
   L6470_setparam_fsspd(0x3ff);   //[R, WR]μステップからフルステップへの切替点速度default 0x027 (10bit) (15.25*val+7.63[step/s])
   L6470_setparam_kvalhold(0x20); //[R, WR]停止時励磁電圧default 0x29 (8bit) (Vs[V]*val/256)
