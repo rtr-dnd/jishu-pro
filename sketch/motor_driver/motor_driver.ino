@@ -1,5 +1,6 @@
 #include <SPI.h>
 #include <MsTimer2.h>
+#include <stdlib.h>
 
 // ピン定義。
 #define PIN_SPI_MOSI 11
@@ -11,8 +12,7 @@
 #define UPPER_LIMIT 0x3D22
 
 int input = -1;
-int direction = 1;
-int buf = 0;
+unsigned long bin = 0;
 
 void setup()
 {
@@ -43,49 +43,69 @@ void loop()
   {
     switch (input)
     {
-    case '-':
-      direction = -1;
-      break;
     case '0':
-      buf = 0 + buf * 10;
+      bin = bin << 4;
+      bin += 0;
       break;
     case '1':
-      buf = 1 + buf * 10;
+      bin = bin << 4;
+      bin += 1;
       break;
     case '2':
-      buf = 2 + buf * 10;
+      bin = bin << 4;
+      bin += 2;
       break;
     case '3':
-      buf = 3 + buf * 10;
+      bin = bin << 4;
+      bin += 3;
       break;
     case '4':
-      buf = 4 + buf * 10;
+      bin = bin << 4;
+      bin += 4;
       break;
     case '5':
-      buf = 5 + buf * 10;
+      bin = bin << 4;
+      bin += 5;
       break;
     case '6':
-      buf = 6 + buf * 10;
+      bin = bin << 4;
+      bin += 6;
       break;
     case '7':
-      buf = 7 + buf * 10;
+      bin = bin << 4;
+      bin += 7;
       break;
     case '8':
-      buf = 8 + buf * 10;
+      bin = bin << 4;
+      bin += 8;
       break;
     case '9':
-      buf = 9 + buf * 10;
+      bin = bin << 4;
+      bin += 9;
       break;
-    case 'a':
-      Serial.print("registered");
-      Serial.print(direction);
-      Serial.print(buf);
-      if ((buf < 20000) && (buf > -20000))
-      {
-        L6470_move(direction, buf); //反転
-      }
-      buf = 0;
-      direction = 1;
+    case 'A':
+      bin = bin << 4;
+      bin += 10;
+      break;
+    case 'B':
+      bin = bin << 4;
+      bin += 11;
+      break;
+    case 'C':
+      bin = bin << 4;
+      bin += 12;
+      break;
+    case 'D':
+      bin = bin << 4;
+      bin += 13;
+      break;
+    case 'E':
+      bin = bin << 4;
+      bin += 14;
+      break;
+    case 'F':
+      bin = bin << 4;
+      bin += 15;
       break;
     case 'b':
       L6470_hardstop_u();
@@ -95,10 +115,28 @@ void loop()
       L6470_hardstop_u();
       L6470_goto_u(0x1F40);
       break;
-    case 'r':
-      buf = 0;
-      direction = 1;
+    case 'd':
+      L6470_move(-1, 1000);
       break;
+    case 'h':
+      L6470_gohome();
+      break;
+    case 'u':
+      L6470_move(1, 1000);
+      break;
+    case 'r':
+      bin = 0;
+      L6470_resetpos();
+      break;
+    case 'z':
+      Serial.print("registered\n");
+      Serial.print(bin);
+      Serial.print("\n");
+      L6470_hardstop_u();
+      L6470_goto_u(bin);
+      bin = 0;
+      break;
+
     default:
       break;
     }

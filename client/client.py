@@ -260,7 +260,7 @@ while True:
           prev_cp = cp
           print('abs_pos ' + str(abs_pos))
           print('smooth_val ' + str(smooth_val))
-          ser.write(bytes(str(int(smooth_val)) + 'a', 'utf-8'))
+          # ser.write(bytes(str(int(smooth_val)) + 'a', 'utf-8'))
           # destination = cp
           print('followed and set')
           print(destination)
@@ -305,10 +305,11 @@ while True:
     destination = []
   elif k == ord('u'): # up、奥
     print('up')
-    ser.write(bytes(str(int(MOTOR_UNIT * 0.1)) + 'a', 'utf-8'))
+    # ser.write(bytes(str(int(MOTOR_UNIT * 0.1)) + 'a', 'utf-8'))
   elif k == ord('d'): # down、手前
     print('down')
-    ser.write(bytes('-' + str(int(MOTOR_UNIT * 0.1)) + 'a', 'utf-8'))
+    # ser.write(bytes('-' + str(int(MOTOR_UNIT * 0.1)) + 'a', 'utf-8'))
+    ser.write(bytes('1F40z', 'utf-8'))
   elif k == ord('q'):
     break
 
@@ -320,3 +321,13 @@ for i in range(0, len(TARGET)):
 cv.destroyAllWindows()
 ser.close()
 
+
+
+# char copy[buf.length() + 1];
+#       buf.toCharArray(copy, buf.length() + 1);
+#       long n = strtol(copy, NULL, 16);
+#       if (n > 0x1fffffL)
+#       {
+#         Serial.print("signed");
+#         n -= 0x400000L;
+#       }
