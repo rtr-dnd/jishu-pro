@@ -1,6 +1,7 @@
 import csv
 import numpy as np
 import cv2 as cv
+import copy
 import serial
 import threading
 # from pynput import keyboard
@@ -155,8 +156,12 @@ def sendPos(pos):
 def fasterForLoop(ser):
   global cur_pos
   while(True):
-    cur_pos = int(repr(ser.readline().decode())[1:-5])
-    # print(cur_pos)
+    tmp = repr(ser.readline().decode())
+    try:
+      cur_pos = int(tmp[1:-5])
+      print(cur_pos)
+    except:
+      print(tmp)
 
 # read parameters
 for i in range(0, len(TARGET)):
@@ -176,9 +181,6 @@ dist = dist[..., np.newaxis]
 
 origin = np.float32([[0, 0, 0]]).reshape(-1,3)
 axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
-testPoints = np.float32([[5, 0, 0], [0, 0, -3]]).reshape(-1, 3)
-
-coordTestArr_C = [[650, 290, 1], [850, 490, 1]] # (u, v, 1)
 
 cap = []
 for i in range(0, len(TARGET)):
@@ -197,8 +199,10 @@ d1 = [[], []] # i番目: i番目のカメラからの最近点までの距離（
 d2 = [[], []] # i番目: i番目のカメラからの最近点までの距離（世界座標）（下マーカー）
 ptArr1 = [[], []] # i番目: i番目のカメラから見たときある点に見えるような線の集合（世界座標）（上マーカー）
 ptArr2 = [[], []] # i番目: i番目のカメラから見たときある点に見えるような線の集合（世界座標）（下マーカー）
+target_pos = 0 # 起動したときを0とした絶対位置（ステップ数）
 destination = [] # shiftを押し始めたときのcontact point
-abs_pos = 0 # 起動したときを0とした絶対位置（ステップ数）
+cur_destination = [] # destinationに相当する紙上の点が今世界座標でどこにあるか
+dest_pos = 0 # shiftを押し始めたときのモータ座標
 motor_loop_interval = 0
 prev_cp = [] # maybe error detction用
 smooth_val = 0 # ローパスフィルタ用（ステップ数）
@@ -286,7 +290,6 @@ while True:
 
   # 描画用
   for i in range(0, len(TARGET)):
-    # imgs[i] = drawPoints_C(imgs[i], [coordTestArr_C[i]])
     # imgs[i] = drawPoints(imgs[i], avgpt1, rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
     # imgs[i] = drawPoints(imgs[i], avgpt2, rvecs[i], tvecs[i], mtx[i], dist[i], (0, 255, 255))
     imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][0][0:2]), 10, (100, 255, 0), -1)
@@ -298,29 +301,29 @@ while True:
 
 
   k = cv.waitKey(1)
+  print(k)
   if k == ord('s'): # set destination
-    destination = cp
-    prev_cp = cp
+    destination = copy.deepcopy(cp)
+    cur_destination = copy.deepcopy(cp)
+    dest_pos = cur_pos
+    target_pos = cur_pos
+    # prev_cp = cp
     print('set')
     print(destination)
   elif k == ord('f'): # follow destination
     if (destination == []):
       print('destination not set')
       continue
-  #   temp_val = int((destination[1] - cp[1]) * MOTOR_UNIT)
-  #   if (abs_pos + temp_val > MOTOR_UNIT * MOTOR_MARGIN):
-  #     print('overflowed: too high')
-  #     continue
-  #   elif (abs_pos + temp_val < -MOTOR_UNIT * MOTOR_MARGIN):
-  #     print('overflowed: too low')
-  #     continue
-
-  #   abs_pos += temp_val
-  #   print(abs_pos)
-  #   ser.write(bytes(str(temp_val) + 'a', 'utf-8'))
-  #   destination = cp
-  #   print('followed and set')
-  #   print(destination)
+    print('destination below')
+    print(destination)
+    cur_destination[1] = destination[1] - (cur_pos - dest_pos) / MOTOR_UNIT
+    print('destination below')
+    print(destination)
+    dif = cp[1] - cur_destination[1]
+    target_pos = int(dest_pos - dif * MOTOR_UNIT)
+    print('target_pos below')
+    print(target_pos)
+    sendPos(target_pos)
   elif k == ord('x'):
     print('sending val x')
     sendPos(9600)
