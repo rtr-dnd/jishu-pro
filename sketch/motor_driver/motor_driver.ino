@@ -13,6 +13,7 @@
 
 int input = -1;
 unsigned long bin = 0;
+long pos;
 
 void setup()
 {
@@ -166,9 +167,15 @@ void L6470_setup()
 
 void flash()
 {
-  Serial.print("0x");
-  Serial.print(L6470_getparam_abspos(), HEX);
-  Serial.print("  ");
-  Serial.print("0x");
-  Serial.println(L6470_getparam_speed(), HEX);
+  // Serial.print("0x");
+  pos = L6470_getparam_abspos();
+  if (pos > 0x1fffffL)
+  {
+    pos -= 0x400000L;
+  }
+  Serial.println(pos, DEC);
+
+  // Serial.print("  ");
+  // Serial.print("0x");
+  // Serial.println(L6470_getparam_speed(), HEX);
 }

@@ -11,6 +11,8 @@ Z_OFFSET = 0.2 # 天板との接地点のz座標（世界座標）
 MOTOR_UNIT = 9650 # 1マス分のモーターステップ数
 MOTOR_MARGIN = 2.0 # モーターの可動域（何マスか）
 
+cur_pos = 0 # 今のモータ座標位置
+
 ser = serial.Serial("/dev/tty.usbserial-14130", 9600)
 
 # is_shiftkey_pressed = False
@@ -151,8 +153,10 @@ def sendPos(pos):
   ser.write(bytes(hex_val[2:].upper() + 'z', 'utf-8'))
 
 def fasterForLoop(ser):
+  global cur_pos
   while(True):
-    print(repr(ser.readline().decode()))
+    cur_pos = int(repr(ser.readline().decode())[1:-5])
+    # print(cur_pos)
 
 # read parameters
 for i in range(0, len(TARGET)):
