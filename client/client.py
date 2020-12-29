@@ -8,7 +8,7 @@ import threading
 
 TARGET = ["right_cam", "left_cam"]
 CAMPORT = [0, 2]
-Z_OFFSET = 0.2 # 天板との接地点のz座標（世界座標）
+Z_OFFSET = 0.1 # 天板との接地点のz座標（世界座標）
 MOTOR_UNIT = 9650 # 1マス分のモーターステップ数
 MOTOR_MARGIN = 2.0 # モーターの可動域（何マスか）
 
@@ -51,7 +51,7 @@ def findMarkers(img):
   # mask1 = cv.inRange(hsv_img, (0, 160, 70), (5, 255, 255))
   # mask2 = cv.inRange(hsv_img, (175, 160, 70), (180, 255, 255))
   # mask = cv.bitwise_or(mask1, mask2)
-  mask = cv.inRange(hsv_img, (36, 100, 50), (86, 255, 255))
+  mask = cv.inRange(hsv_img, (50, 100, 50), (86, 255, 255))
   masked_img = cv.bitwise_and(img, img, mask=mask)
   contours, hierarchy = cv.findContours(mask, 1, 2)
   contours.sort(key=lambda s: len(s))
@@ -155,11 +155,14 @@ def sendPos(pos):
 
 def fasterForLoop(ser):
   global cur_pos
+  global cur_destination
   while(True):
     tmp = repr(ser.readline().decode())
     try:
       cur_pos = int(tmp[1:-5])
       print(cur_pos)
+      if (destination != []):
+        cur_destination[1] = destination[1] - (cur_pos - dest_pos) / MOTOR_UNIT # todo: 何かがおかしい
     except:
       print(tmp)
 
@@ -201,7 +204,7 @@ ptArr1 = [[], []] # i番目: i番目のカメラから見たときある点に�
 ptArr2 = [[], []] # i番目: i番目のカメラから見たときある点に見えるような線の集合（世界座標）（下マーカー）
 target_pos = 0 # 起動したときを0とした絶対位置（ステップ数）
 destination = [] # shiftを押し始めたときのcontact point
-cur_destination = [] # destinationに相当する紙上の点が今世界座標でどこにあるか
+cur_destination = np.float32(np.array([0, 0, 0])) # destinationに相当する紙上の点が今世界座標でどこにあるか
 dest_pos = 0 # shiftを押し始めたときのモータ座標
 motor_loop_interval = 0
 prev_cp = [] # maybe error detction用
@@ -295,6 +298,7 @@ while True:
     imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][0][0:2]), 10, (100, 255, 0), -1)
     imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
     imgs[i] = drawPoints(imgs[i], np.array([cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
+    imgs[i] = drawPoints(imgs[i], np.array([cur_destination]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
     imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
     cv.imshow('img_' + TARGET[i], imgs[i])
     # cv.imshow('blank', blank_image)
@@ -316,9 +320,8 @@ while True:
       continue
     print('destination below')
     print(destination)
-    cur_destination[1] = destination[1] - (cur_pos - dest_pos) / MOTOR_UNIT
-    print('destination below')
-    print(destination)
+    print('cur_destination below')
+    print(cur_destination)
     dif = cp[1] - cur_destination[1]
     target_pos = int(dest_pos - dif * MOTOR_UNIT)
     print('target_pos below')
