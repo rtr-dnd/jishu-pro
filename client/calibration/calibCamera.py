@@ -7,7 +7,7 @@ import glob
 from time import sleep
 from datetime import datetime
 
-CALIB_TARGET = "right_cam"
+CALIB_TARGET = "left_cam"
 
 TMP_FOLDER_PATH = "./res_" + CALIB_TARGET + "/"
 MTX_PATH = TMP_FOLDER_PATH + "mtx_" + CALIB_TARGET + ".csv"

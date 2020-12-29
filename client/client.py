@@ -4,6 +4,7 @@ import cv2 as cv
 import copy
 import serial
 import threading
+import time
 # from pynput import keyboard
 
 TARGET = ["right_cam", "left_cam"]
@@ -11,6 +12,9 @@ CAMPORT = [0, 2]
 Z_OFFSET = 0.1 # 天板との接地点のz座標（世界座標）
 MOTOR_UNIT = 9650 # 1マス分のモーターステップ数
 MOTOR_MARGIN = 2.0 # モーターの可動域（何マスか）
+
+temp_for_measure = 0
+start_time = 0
 
 cur_pos = 0 # 今のモータ座標位置
 
@@ -160,11 +164,12 @@ def fasterForLoop(ser):
     tmp = repr(ser.readline().decode())
     try:
       cur_pos = int(tmp[1:-5])
-      print(cur_pos)
+      # print(cur_pos)
       if (destination != []):
         cur_destination[1] = destination[1] - (cur_pos - dest_pos) / MOTOR_UNIT # todo: 何かがおかしい
     except:
-      print(tmp)
+      pass
+      # print(tmp)
 
 # read parameters
 for i in range(0, len(TARGET)):
@@ -188,6 +193,11 @@ axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
 cap = []
 for i in range(0, len(TARGET)):
   cap.append(cv.VideoCapture(CAMPORT[i]))
+  # 高速化
+  cap[i].set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('H', '2', '6', '4'))
+  cap[i].set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+  cap[i].set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+  cap[i].set(cv.CAP_PROP_BUFFERSIZE, 1)
 
 imgs = [[], []]
 red_centers = [[], []] # i番目: i番目のカメラに映るマーカーの中心座標×2（スクリーン座標u, v, 1）
@@ -211,8 +221,8 @@ motor_loop_interval = 3
 smooth_val = 0 # ローパスフィルタ用（ステップ数）
 param_a = 0.3 # ローパスフィルタ用係数
 
-# blank_image = np.zeros(shape=[512, 512, 3], dtype=np.uint8)
-# cv.imshow('blank', blank_image)
+blank_image = np.zeros(shape=[512, 512, 3], dtype=np.uint8)
+cv.imshow('blank', blank_image)
 
 thread = threading.Thread(target=fasterForLoop, args=(ser,))
 thread.setDaemon(True)
@@ -220,6 +230,7 @@ thread.start()
 
 
 while True:
+  start_time = time.time()
   # 直線を出す用
   for i in range(0, len(TARGET)):
     imgs[i] = cv.undistort(cap[i].read()[1], mtx[i], dist[i])
@@ -266,96 +277,93 @@ while True:
   # if (motor_loop_interval < 0):
   # print(cp)
   # motor_loop_interval = 3
-  if (destination == []):
-    print('destination not set')
+  # if (destination == []):
+  #   print('destination not set')
     # continue
-  else:
-    print('destination below')
-    print(destination)
-    print('cur_destination below')
-    print(cur_destination)
+  # else:
+  if (destination != []):
     dif = cp[1] - cur_destination[1]
     target_pos = int(cur_pos - dif * MOTOR_UNIT)
-    print('target_pos below')
-    print(target_pos)
+    # print('destination below')
+    # print(destination)
+    # print('cur_destination below')
+    # print(cur_destination)
+    # print('target_pos below')
+    # print(target_pos)
     sendPos(target_pos)
   
   # 描画用
-  for i in range(0, len(TARGET)):
+  # for i in range(0, len(TARGET)):
     # imgs[i] = drawPoints(imgs[i], avgpt1, rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
     # imgs[i] = drawPoints(imgs[i], avgpt2, rvecs[i], tvecs[i], mtx[i], dist[i], (0, 255, 255))
-    imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][0][0:2]), 10, (100, 255, 0), -1)
-    imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
-    imgs[i] = drawPoints(imgs[i], np.array([cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
-    imgs[i] = drawPoints(imgs[i], np.array([cur_destination]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
-    imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
-    cv.imshow('img_' + TARGET[i], imgs[i])
-    # cv.imshow('blank', blank_image)
+    # imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][0][0:2]), 10, (100, 255, 0), -1)
+    # imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
+    # imgs[i] = drawPoints(imgs[i], np.array([cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
+    # imgs[i] = drawPoints(imgs[i], np.array([cur_destination]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
+    # imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
+    # cv.imshow('img_' + TARGET[i], imgs[i])
+  cv.imshow('blank', blank_image)
 
 
   k = cv.waitKey(1)
-  print(k)
-  if k == ord('s'): # set destination
-    destination = copy.deepcopy(cp)
-    cur_destination = copy.deepcopy(cp)
-    dest_pos = cur_pos
-    target_pos = cur_pos
-    # prev_cp = cp
-    print('set')
-    print(destination)
-  elif k == ord('f'): # follow destination
-    if (destination == []):
-      print('destination not set')
-      continue
-    print('destination below')
-    print(destination)
-    print('cur_destination below')
-    print(cur_destination)
-    dif = cp[1] - cur_destination[1]
-    target_pos = int(cur_pos - dif * MOTOR_UNIT)
-    print('target_pos below')
-    print(target_pos)
-    sendPos(target_pos)
-  elif k == ord('x'):
-    print('sending val x')
-    sendPos(9600)
-  elif k == ord('y'):
-    print('sending val y')
-    sendPos(-9600)
-  elif k == ord('r'): # reset
-    print('reset')
-    destination = []
-    ser.write(bytes('r', 'utf-8'))
-  elif k == ord('u'): # up、奥
-    print('up')
-    ser.write(bytes('u', 'utf-8'))
-  elif k == ord('c'): # up、奥
-    destination = []
-    print('clear destination')
-  elif k == ord('d'): # up、奥
-    print('up')
-    ser.write(bytes('d', 'utf-8'))
-  elif k == ord('h'): # up、奥
-    print('home')
-    ser.write(bytes('h', 'utf-8'))
-  elif k == ord('q'):
+  # print(k)
+  if k != -1:
+    if k == ord('s'): # set destination
+      destination = copy.deepcopy(cp)
+      cur_destination = copy.deepcopy(cp)
+      dest_pos = cur_pos
+      target_pos = cur_pos
+      # prev_cp = cp
+      print('set')
+      print(destination)
+    elif k == ord('f'): # follow destination
+      if (destination == []):
+        print('destination not set')
+        continue
+      print('destination below')
+      print(destination)
+      print('cur_destination below')
+      print(cur_destination)
+      dif = cp[1] - cur_destination[1]
+      target_pos = int(cur_pos - dif * MOTOR_UNIT)
+      print('target_pos below')
+      print(target_pos)
+      sendPos(target_pos)
+    elif k == ord('x'):
+      print('sending val x')
+      sendPos(9600)
+    elif k == ord('y'):
+      print('sending val y')
+      sendPos(-9600)
+    elif k == ord('r'): # reset
+      print('reset')
+      destination = []
+      ser.write(bytes('r', 'utf-8'))
+    elif k == ord('u'): # up、奥
+      print('up')
+      ser.write(bytes('u', 'utf-8'))
+    elif k == ord('c'): # up、奥
+      destination = []
+      print('clear destination')
+    elif k == ord('d'): # up、奥
+      print('up')
+      ser.write(bytes('d', 'utf-8'))
+    elif k == ord('h'): # up、奥
+      print('home')
+      ser.write(bytes('h', 'utf-8'))
+    elif k == ord('q'):
+      break
+  
+  temp_for_measure += 1
+  if (temp_for_measure >= 5000):
     break
+  # print('---------')
 
-  print('---------')
+  elapsed_time = time.time() - start_time
+  print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
 
 
 for i in range(0, len(TARGET)):
   cap[i].release()
 cv.destroyAllWindows()
 ser.close()
-
-
-
-# char copy[buf.length() + 1];
-#       buf.toCharArray(copy, buf.length() + 1);
-#       long n = strtol(copy, NULL, 16);
-#       if (n > 0x1fffffL)
-#       {
-#         Serial.print("signed");
-#         n -= 0x400000L;
-#       }

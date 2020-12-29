@@ -42,6 +42,10 @@ axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
 testPoint = np.float32([[5, 0, 0], [0, 0, -3]]).reshape(-1, 3)
 
 cap1 = cv.VideoCapture(2)
+cap1.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('H', '2', '6', '4'))
+cap1.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+cap1.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+cap1.set(cv.CAP_PROP_BUFFERSIZE, 1)
 
 while True:
   ret, img = cap1.read()

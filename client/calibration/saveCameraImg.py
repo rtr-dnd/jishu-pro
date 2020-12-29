@@ -2,12 +2,19 @@
 # カメラ画像をキャプチャする
 #
 import cv2
+import time
 from datetime import datetime
 
 TARGET = "left_cam"
 cap = cv2.VideoCapture(2) # 任意のカメラ番号に変更する
+cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('H', '2', '6', '4'))
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+start_time = 0
 
 while True:
+    start_time = time.time()
     ret, frame = cap.read()
     cv2.imshow("camera", frame)
 
@@ -22,6 +29,9 @@ while True:
     elif k == ord('q'):
         # 「q」キーが押されたら終了する
         break
+
+    elapsed_time = time.time() - start_time
+    # print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
 
 # キャプチャをリリースして、ウィンドウをすべて閉じる
 cap.release()
