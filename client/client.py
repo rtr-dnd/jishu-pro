@@ -206,9 +206,8 @@ target_pos = 0 # 起動したときを0とした絶対位置（ステップ数�
 destination = [] # shiftを押し始めたときのcontact point
 cur_destination = np.float32(np.array([0, 0, 0])) # destinationに相当する紙上の点が今世界座標でどこにあるか
 dest_pos = 0 # shiftを押し始めたときのモータ座標
-motor_loop_interval = 0
+motor_loop_interval = 3
 # prev_cp = [] # maybe error detction用
-temp_cp = []
 smooth_val = 0 # ローパスフィルタ用（ステップ数）
 param_a = 0.3 # ローパスフィルタ用係数
 
@@ -265,33 +264,22 @@ while True:
   # print(cp)
   # motor_loop_interval -= 1
   # if (motor_loop_interval < 0):
-  #   print(cp)
-  #   motor_loop_interval = 0
-  #   if (destination == []):
-  #     print('destination not set')
-  #   else:
-  #     if (abs(prev_cp[1] - cp[1]) > 0.5):
-  #       print('maybe detection error')
-  #       print(prev_cp[1])
-  #       print(cp[1])
-  #     else:
-  #       temp_val = int((destination[1] - cp[1]) * MOTOR_UNIT)
-  #       print('temp_val ' + str(temp_val))
-  #       if (abs_pos + temp_val > MOTOR_UNIT * MOTOR_MARGIN):
-  #         print('overflowed: too high')
-  #       elif (abs_pos + temp_val < -MOTOR_UNIT * MOTOR_MARGIN):
-  #         print('overflowed: too low')
-  #       else:
-  #         smooth_val = (1 - param_a) * smooth_val + param_a * temp_val
-  #         abs_pos += int(smooth_val)
-  #         prev_cp = cp
-  #         print('abs_pos ' + str(abs_pos))
-  #         print('smooth_val ' + str(smooth_val))
-  #         # ser.write(bytes(str(int(smooth_val)) + 'a', 'utf-8'))
-  #         # destination = cp
-  #         print('followed and set')
-  #         print(destination)
-
+  # print(cp)
+  # motor_loop_interval = 3
+  if (destination == []):
+    print('destination not set')
+    # continue
+  else:
+    print('destination below')
+    print(destination)
+    print('cur_destination below')
+    print(cur_destination)
+    dif = cp[1] - cur_destination[1]
+    target_pos = int(cur_pos - dif * MOTOR_UNIT)
+    print('target_pos below')
+    print(target_pos)
+    sendPos(target_pos)
+  
   # 描画用
   for i in range(0, len(TARGET)):
     # imgs[i] = drawPoints(imgs[i], avgpt1, rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
@@ -300,8 +288,6 @@ while True:
     imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
     imgs[i] = drawPoints(imgs[i], np.array([cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
     imgs[i] = drawPoints(imgs[i], np.array([cur_destination]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
-    if (temp_cp != []):
-      imgs[i] = drawPoints(imgs[i], np.array([temp_cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (0, 255, 255))
     imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
     cv.imshow('img_' + TARGET[i], imgs[i])
     # cv.imshow('blank', blank_image)
@@ -326,8 +312,7 @@ while True:
     print('cur_destination below')
     print(cur_destination)
     dif = cp[1] - cur_destination[1]
-    temp_cp = copy.deepcopy(cp)
-    target_pos = int(cur_pos - dif * MOTOR_UNIT) # 何かがおかしい
+    target_pos = int(cur_pos - dif * MOTOR_UNIT)
     print('target_pos below')
     print(target_pos)
     sendPos(target_pos)
