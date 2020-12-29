@@ -207,7 +207,8 @@ destination = [] # shiftを押し始めたときのcontact point
 cur_destination = np.float32(np.array([0, 0, 0])) # destinationに相当する紙上の点が今世界座標でどこにあるか
 dest_pos = 0 # shiftを押し始めたときのモータ座標
 motor_loop_interval = 0
-prev_cp = [] # maybe error detction用
+# prev_cp = [] # maybe error detction用
+temp_cp = []
 smooth_val = 0 # ローパスフィルタ用（ステップ数）
 param_a = 0.3 # ローパスフィルタ用係数
 
@@ -299,6 +300,8 @@ while True:
     imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
     imgs[i] = drawPoints(imgs[i], np.array([cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
     imgs[i] = drawPoints(imgs[i], np.array([cur_destination]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
+    if (temp_cp != []):
+      imgs[i] = drawPoints(imgs[i], np.array([temp_cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (0, 255, 255))
     imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
     cv.imshow('img_' + TARGET[i], imgs[i])
     # cv.imshow('blank', blank_image)
@@ -323,7 +326,8 @@ while True:
     print('cur_destination below')
     print(cur_destination)
     dif = cp[1] - cur_destination[1]
-    target_pos = int(dest_pos - dif * MOTOR_UNIT)
+    temp_cp = copy.deepcopy(cp)
+    target_pos = int(cur_pos - dif * MOTOR_UNIT) # 何かがおかしい
     print('target_pos below')
     print(target_pos)
     sendPos(target_pos)
