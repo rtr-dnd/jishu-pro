@@ -14,6 +14,7 @@
 int input = -1;
 unsigned long bin = 0;
 long pos;
+int sign = 1; // 速度制御用
 
 void setup()
 {
@@ -114,28 +115,36 @@ void loop()
     case 'h':
       L6470_gohome();
       break;
-    case 'u':
-      L6470_move(1, 1000);
+    case 'm': // minus
+      sign = -1;
       break;
     case 'r':
       bin = 0;
       L6470_resetpos();
       break;
-    case 'x':
-      L6470_hardstop_u();
-      L6470_goto_u(0x3FDA80);
+    case 's':
+      L6470_hardstop();
       break;
-    case 'y':
-      L6470_hardstop_u();
-      L6470_goto_u(0x1F40);
+    case 'u':
+      L6470_move(1, 1000);
+      break;
+    case 'v':
+      // break;
+      Serial.print("velocity registered\n");
+      Serial.print(bin);
+      Serial.print("\n");
+      L6470_run(sign, bin);
+      bin = 0;
+      sign = 1;
       break;
     case 'z':
-      Serial.print("registered\n");
+      Serial.print("pos registered\n");
       Serial.print(bin);
       Serial.print("\n");
       L6470_hardstop_u();
       L6470_goto_u(bin);
       bin = 0;
+      sign = 1;
       break;
 
     default:
