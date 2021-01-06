@@ -157,6 +157,17 @@ def sendPos(pos):
     hex_val = hex((1<<22) + pos)
   ser.write(bytes(hex_val[2:].upper() + 'z', 'utf-8'))
 
+def sendVel(vel):
+  hex_val = ''
+  if (vel >= 0):
+    hex_val = hex(vel)[2:].upper()
+  else:
+    # hex_val = 'm' + hex((1<<20) + vel)[2:].upper()
+    hex_val = 'm' + hex(vel)[3:].upper()
+  # print(hex_val + 'v')
+  ser.write(bytes(hex_val + 'v', 'utf-8'))
+
+
 def fasterForLoop(ser):
   global cur_pos
   global cur_destination
@@ -215,11 +226,12 @@ ptArr2 = [[], []] # i番目: i番目のカメラから見たときある点に�
 target_pos = 0 # 起動したときを0とした絶対位置（ステップ数）
 destination = [] # shiftを押し始めたときのcontact point
 cur_destination = np.float32(np.array([0, 0, 0])) # destinationに相当する紙上の点が今世界座標でどこにあるか
+prev_cp = []
 dest_pos = 0 # shiftを押し始めたときのモータ座標
-motor_loop_interval = 3
-# prev_cp = [] # maybe error detction用
-smooth_val = 0 # ローパスフィルタ用（ステップ数）
-param_a = 0.3 # ローパスフィルタ用係数
+motor_loop_interval = 0
+prev_time = time.time() # 前回ループ時の時刻
+smooth_cp = [] # ローパスフィルタ済みの値
+param_a = 0.7 # ローパスフィルタ用係数
 
 blank_image = np.zeros(shape=[512, 512, 3], dtype=np.uint8)
 cv.imshow('blank', blank_image)
@@ -230,7 +242,7 @@ thread.start()
 
 
 while True:
-  start_time = time.time()
+  # start_time = time.time()
   # 直線を出す用
   for i in range(0, len(TARGET)):
     imgs[i] = cv.undistort(cap[i].read()[1], mtx[i], dist[i])
@@ -272,6 +284,10 @@ while True:
   avgpt1 = np.average(ptArr1, axis=0)
   avgpt2 = np.average(ptArr2, axis=0)
   cp = calcContactPoint(avgpt1.ravel(), avgpt2.ravel())
+  if (smooth_cp == []):
+    smooth_cp = copy.deepcopy(cp)
+  else:
+    smooth_cp = (1 - param_a) * smooth_cp + param_a * cp
   # print(cp)
   # motor_loop_interval -= 1
   # if (motor_loop_interval < 0):
@@ -281,16 +297,23 @@ while True:
   #   print('destination not set')
     # continue
   # else:
+  velocity = 0 # 毎回0にする
   if (destination != []):
-    dif = cp[1] - cur_destination[1]
-    target_pos = int(cur_pos - dif * MOTOR_UNIT)
-    # print('destination below')
-    # print(destination)
-    # print('cur_destination below')
-    # print(cur_destination)
-    # print('target_pos below')
-    # print(target_pos)
-    sendPos(target_pos)
+    # dif = cp[1] - cur_destination[1]
+    # target_pos = int(cur_pos - dif * MOTOR_UNIT)
+    # sendPos(target_pos)
+    tick_length = time.time() - prev_time
+    if (tick_length < 0.5): # fail safe
+      # velocity = int((cp[1] - prev_cp[1]) * MOTOR_UNIT / tick_length * 0.015)
+      # velocity = int((cp[1] - prev_cp[1]) * MOTOR_UNIT / tick_length / 0.015)
+      velocity = int(-(cp[1] - prev_cp[1]) * MOTOR_UNIT / tick_length)
+      print('-----')
+      print(tick_length)
+      print(velocity)
+      print(hex(velocity))
+    prev_time = time.time()
+    prev_cp = cp
+  sendVel(velocity)
   
   # 描画用
   for i in range(0, len(TARGET)):
@@ -298,7 +321,7 @@ while True:
     # imgs[i] = drawPoints(imgs[i], avgpt2, rvecs[i], tvecs[i], mtx[i], dist[i], (0, 255, 255))
     imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][0][0:2]), 10, (100, 255, 0), -1)
     imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
-    imgs[i] = drawPoints(imgs[i], np.array([cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
+    imgs[i] = drawPoints(imgs[i], np.array([smooth_cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
     imgs[i] = drawPoints(imgs[i], np.array([cur_destination]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
     imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
     cv.imshow('img_' + TARGET[i], imgs[i])
@@ -309,11 +332,12 @@ while True:
   # print(k)
   if k != -1:
     if k == ord('s'): # set destination
+      prev_time = time.time()
       destination = copy.deepcopy(cp)
       cur_destination = copy.deepcopy(cp)
       dest_pos = cur_pos
       target_pos = cur_pos
-      # prev_cp = cp
+      prev_cp = cp
       print('set')
       print(destination)
     elif k == ord('f'): # follow destination
@@ -342,6 +366,15 @@ while True:
     elif k == ord('u'): # up、奥
       print('up')
       ser.write(bytes('u', 'utf-8'))
+    elif k == ord('v'):
+      sendVel(0x5000)
+    elif k == ord('n'):
+      sendVel(20400)
+    elif k == ord('m'):
+      sendVel(-20400)
+    elif k == ord('b'):
+      destination = []
+      sendVel(0)
     elif k == ord('c'): # up、奥
       destination = []
       print('clear destination')
@@ -359,10 +392,10 @@ while True:
     break
   # print('---------')
 
-  elapsed_time = time.time() - start_time
+  # elapsed_time = time.time() - start_time
   # print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
 
-
+sendVel(0)
 for i in range(0, len(TARGET)):
   cap[i].release()
 cv.destroyAllWindows()
