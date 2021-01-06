@@ -8,7 +8,7 @@ import time
 # from pynput import keyboard
 
 TARGET = ["right_cam", "left_cam"]
-CAMPORT = [0, 2]
+CAMPORT = [2, 0]
 Z_OFFSET = 0.1 # 天板との接地点のz座標（世界座標）
 MOTOR_UNIT = 9650 # 1マス分のモーターステップ数
 MOTOR_MARGIN = 2.0 # モーターの可動域（何マスか）
@@ -293,15 +293,15 @@ while True:
     sendPos(target_pos)
   
   # 描画用
-  # for i in range(0, len(TARGET)):
+  for i in range(0, len(TARGET)):
     # imgs[i] = drawPoints(imgs[i], avgpt1, rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
     # imgs[i] = drawPoints(imgs[i], avgpt2, rvecs[i], tvecs[i], mtx[i], dist[i], (0, 255, 255))
-    # imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][0][0:2]), 10, (100, 255, 0), -1)
-    # imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
-    # imgs[i] = drawPoints(imgs[i], np.array([cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
-    # imgs[i] = drawPoints(imgs[i], np.array([cur_destination]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
-    # imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
-    # cv.imshow('img_' + TARGET[i], imgs[i])
+    imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][0][0:2]), 10, (100, 255, 0), -1)
+    imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
+    imgs[i] = drawPoints(imgs[i], np.array([cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
+    imgs[i] = drawPoints(imgs[i], np.array([cur_destination]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
+    imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
+    cv.imshow('img_' + TARGET[i], imgs[i])
   cv.imshow('blank', blank_image)
 
 
@@ -360,7 +360,7 @@ while True:
   # print('---------')
 
   elapsed_time = time.time() - start_time
-  print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+  # print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
 
 
 for i in range(0, len(TARGET)):
