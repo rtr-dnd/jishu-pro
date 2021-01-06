@@ -167,9 +167,13 @@ def sendVel(vel):
   # print(hex_val + 'v')
   ser.write(bytes(hex_val + 'v', 'utf-8'))
 
-Kp = MOTOR_UNIT * 80
-Ki = 0.0
-Kd = 0.0
+# Ku = MOTOR_UNIT * 70
+# Pu = 0.5
+Kp = MOTOR_UNIT * 70 * 0.6
+# Ti = 0.5 * Pu
+Ki = MOTOR_UNIT * 70 * 0.6 / (0.5 * 0.5)
+# Td = 0.125 * Pu
+Kd = MOTOR_UNIT * 70 * 0.6 * 0.125 * 0.5
 diff = [0.0, 0.0]
 integral = 0.0
 prev_time_pid = time.time()
@@ -191,7 +195,7 @@ def pid(sensor_cp, target_cp):
   i = Ki * integral
   d = Kd * (diff[1] - diff[0]) / prev_time_pid
 
-  res = max(min(p + i + d, 140000), -140000)
+  res = max(min(p + i + d, 160000), -160000)
   print(res)
   return res
 
