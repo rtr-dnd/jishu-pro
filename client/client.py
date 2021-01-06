@@ -167,6 +167,34 @@ def sendVel(vel):
   # print(hex_val + 'v')
   ser.write(bytes(hex_val + 'v', 'utf-8'))
 
+Kp = MOTOR_UNIT * 80
+Ki = 0.0
+Kd = 0.0
+diff = [0.0, 0.0]
+integral = 0.0
+prev_time_pid = time.time()
+
+def pid(sensor_cp, target_cp):
+  global Kp, Ki, Kd, diff, integral
+  global prev_time_pid
+  
+  delta_t_pid = time.time() - prev_time_pid
+  prev_time_pid = time.time()
+
+  diff[0] = diff[1]
+  diff[1] = - (sensor_cp[1] - target_cp[1])
+  # cpは下がプラス→s時点より下の方にあるとsensor - targetがプラス→下に動かしたい
+  # dを押すとマイナスが送られるのでsendvelではマイナス
+  integral += (diff[0] + diff[1]) / 2 * delta_t_pid
+
+  p = Kp * diff[1]
+  i = Ki * integral
+  d = Kd * (diff[1] - diff[0]) / prev_time_pid
+
+  res = max(min(p + i + d, 140000), -140000)
+  print(res)
+  return res
+
 
 def fasterForLoop(ser):
   global cur_pos
@@ -304,9 +332,8 @@ while True:
     # sendPos(target_pos)
     tick_length = time.time() - prev_time
     if (tick_length < 0.5): # fail safe
-      # velocity = int((cp[1] - prev_cp[1]) * MOTOR_UNIT / tick_length * 0.015)
-      # velocity = int((cp[1] - prev_cp[1]) * MOTOR_UNIT / tick_length / 0.015)
-      velocity = int(-(cp[1] - prev_cp[1]) * MOTOR_UNIT / tick_length)
+      # velocity = int(-(cp[1] - prev_cp[1]) * MOTOR_UNIT / tick_length)
+      velocity = int(pid(smooth_cp, cur_destination))
       print('-----')
       print(tick_length)
       print(velocity)
@@ -385,11 +412,12 @@ while True:
       print('home')
       ser.write(bytes('h', 'utf-8'))
     elif k == ord('q'):
+      sendVel(0)
       break
   
-  temp_for_measure += 1
-  if (temp_for_measure >= 5000):
-    break
+  # temp_for_measure += 1
+  # if (temp_for_measure >= 5000):
+  #   break
   # print('---------')
 
   # elapsed_time = time.time() - start_time
