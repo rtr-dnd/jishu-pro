@@ -164,16 +164,20 @@ def sendVel(vel):
   else:
     # hex_val = 'm' + hex((1<<20) + vel)[2:].upper()
     hex_val = 'm' + hex(vel)[3:].upper()
-  # print(hex_val + 'v')
+  print('sendvel: ' + str(hex_val + 'v'))
   ser.write(bytes(hex_val + 'v', 'utf-8'))
 
 # Ku = MOTOR_UNIT * 70
 # Pu = 0.5
-Kp = MOTOR_UNIT * 70 * 0.6
+# Kp = MOTOR_UNIT * 70 * 0.6 * 0.5
+K = 1.8
+Kp = MOTOR_UNIT * 5 * K
 # Ti = 0.5 * Pu
-Ki = MOTOR_UNIT * 70 * 0.6 / (0.5 * 0.5)
+Ki = MOTOR_UNIT * 0.1 * 0.6 / (0.5 * 0.3) * K
+# Ki = 0
 # Td = 0.125 * Pu
-Kd = MOTOR_UNIT * 70 * 0.6 * 0.125 * 0.5
+Kd = MOTOR_UNIT * 0.1 * 0.6 / (0.5 * 0.3) / 4 * K
+# Kd = 0
 diff = [0.0, 0.0]
 integral = 0.0
 prev_time_pid = time.time()
@@ -193,10 +197,16 @@ def pid(sensor_cp, target_cp):
 
   p = Kp * diff[1]
   i = Ki * integral
-  d = Kd * (diff[1] - diff[0]) / prev_time_pid
+  d = Kd * (diff[1] - diff[0]) / delta_t_pid
 
-  res = max(min(p + i + d, 160000), -160000)
-  print(res)
+  print('diff: ' + str(diff[1]))
+  print('p: ' + str(p))
+  print('i: ' + str(i))
+  print('d: ' + str(d))
+  res = max(min(p + i + d, 180000), -180000)
+  if abs(res) < 1000:
+    res = 0
+  print('res: ' + str(res))
   return res
 
 
@@ -263,7 +273,7 @@ dest_pos = 0 # shiftを押し始めたときのモータ座標
 motor_loop_interval = 0
 prev_time = time.time() # 前回ループ時の時刻
 smooth_cp = [] # ローパスフィルタ済みの値
-param_a = 0.7 # ローパスフィルタ用係数
+param_a = 0.6 # ローパスフィルタ用係数
 
 blank_image = np.zeros(shape=[512, 512, 3], dtype=np.uint8)
 cv.imshow('blank', blank_image)
@@ -274,7 +284,7 @@ thread.start()
 
 
 while True:
-  # start_time = time.time()
+  start_time = time.time()
   # 直線を出す用
   for i in range(0, len(TARGET)):
     imgs[i] = cv.undistort(cap[i].read()[1], mtx[i], dist[i])
@@ -338,24 +348,23 @@ while True:
     if (tick_length < 0.5): # fail safe
       # velocity = int(-(cp[1] - prev_cp[1]) * MOTOR_UNIT / tick_length)
       velocity = int(pid(smooth_cp, cur_destination))
-      print('-----')
-      print(tick_length)
-      print(velocity)
-      print(hex(velocity))
+      # print(tick_length)
+      # print(velocity)
+      # print(hex(velocity))
     prev_time = time.time()
     prev_cp = cp
   sendVel(velocity)
   
   # 描画用
-  for i in range(0, len(TARGET)):
+  # for i in range(0, len(TARGET)):
     # imgs[i] = drawPoints(imgs[i], avgpt1, rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
     # imgs[i] = drawPoints(imgs[i], avgpt2, rvecs[i], tvecs[i], mtx[i], dist[i], (0, 255, 255))
-    imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][0][0:2]), 10, (100, 255, 0), -1)
-    imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
-    imgs[i] = drawPoints(imgs[i], np.array([smooth_cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
-    imgs[i] = drawPoints(imgs[i], np.array([cur_destination]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
-    imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
-    cv.imshow('img_' + TARGET[i], imgs[i])
+    # imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][0][0:2]), 10, (100, 255, 0), -1)
+    # imgs[i] = cv.circle(imgs[i], tuple(red_centers[i][1][0:2]), 10, (100, 0, 255), -1)
+    # imgs[i] = drawPoints(imgs[i], np.array([smooth_cp]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 0, 255))
+    # imgs[i] = drawPoints(imgs[i], np.array([cur_destination]), rvecs[i], tvecs[i], mtx[i], dist[i], (255, 255, 0))
+    # imgs[i] = drawVector(imgs[i], origin, axis, rvecs[i], tvecs[i], mtx[i], dist[i])
+    # cv.imshow('img_' + TARGET[i], imgs[i])
   cv.imshow('blank', blank_image)
 
 
@@ -422,10 +431,10 @@ while True:
   # temp_for_measure += 1
   # if (temp_for_measure >= 5000):
   #   break
-  # print('---------')
 
-  # elapsed_time = time.time() - start_time
-  # print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+  elapsed_time = time.time() - start_time
+  print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+  print('---------')
 
 sendVel(0)
 for i in range(0, len(TARGET)):
