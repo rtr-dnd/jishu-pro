@@ -20,6 +20,8 @@ cur_pos = 0 # 今のモータ座標位置
 
 ser = serial.Serial("/dev/tty.usbserial-14130", 9600)
 
+sw_toggle = False
+
 # is_shiftkey_pressed = False
 
 # def on_press(key):
@@ -378,8 +380,27 @@ while True:
       dest_pos = cur_pos
       target_pos = cur_pos
       prev_cp = cp
+      diff = [0.0, 0.0]
+      integral = 0.0
       print('set')
       print(destination)
+    elif k == ord('h'):
+      sw_toggle = not(sw_toggle)
+      if sw_toggle:
+        prev_time = time.time()
+        destination = copy.deepcopy(cp)
+        cur_destination = copy.deepcopy(cp)
+        dest_pos = cur_pos
+        target_pos = cur_pos
+        prev_cp = cp
+        diff = [0.0, 0.0]
+        integral = 0.0
+        print('set')
+        print(destination)
+      else:
+        destination = []
+        cur_destination = []
+        sendVel(0)
     elif k == ord('f'): # follow destination
       if (destination == []):
         print('destination not set')
@@ -415,15 +436,12 @@ while True:
     elif k == ord('b'):
       destination = []
       sendVel(0)
-    elif k == ord('c'): # up、奥
+    elif k == ord('c'):
       destination = []
       print('clear destination')
-    elif k == ord('d'): # up、奥
+    elif k == ord('d'):
       print('up')
       ser.write(bytes('d', 'utf-8'))
-    elif k == ord('h'): # up、奥
-      print('home')
-      ser.write(bytes('h', 'utf-8'))
     elif k == ord('q'):
       sendVel(0)
       break
