@@ -8,7 +8,7 @@ import time
 # from pynput import keyboard
 
 TARGET = ["right_cam", "left_cam"]
-CAMPORT = [2, 0]
+CAMPORT = [0, 2]
 Z_OFFSET = 0.1 # 天板との接地点のz座標（世界座標）
 MOTOR_UNIT = 9650 # 1マス分のモーターステップ数
 MOTOR_MARGIN = 2.0 # モーターの可動域（何マスか）
@@ -19,8 +19,6 @@ start_time = 0
 cur_pos = 0 # 今のモータ座標位置
 
 ser = serial.Serial("/dev/tty.usbserial-14130", 9600)
-
-sw_toggle = False
 
 # is_shiftkey_pressed = False
 
@@ -172,7 +170,7 @@ def sendVel(vel):
 # Ku = MOTOR_UNIT * 70
 # Pu = 0.5
 # Kp = MOTOR_UNIT * 70 * 0.6 * 0.5
-K = 1.8
+K = 3.0
 Kp = MOTOR_UNIT * 5 * K
 # Ti = 0.5 * Pu
 Ki = MOTOR_UNIT * 0.1 * 0.6 / (0.5 * 0.3) * K
@@ -380,27 +378,8 @@ while True:
       dest_pos = cur_pos
       target_pos = cur_pos
       prev_cp = cp
-      diff = [0.0, 0.0]
-      integral = 0.0
       print('set')
       print(destination)
-    elif k == ord('h'):
-      sw_toggle = not(sw_toggle)
-      if sw_toggle:
-        prev_time = time.time()
-        destination = copy.deepcopy(cp)
-        cur_destination = copy.deepcopy(cp)
-        dest_pos = cur_pos
-        target_pos = cur_pos
-        prev_cp = cp
-        diff = [0.0, 0.0]
-        integral = 0.0
-        print('set')
-        print(destination)
-      else:
-        destination = []
-        cur_destination = []
-        sendVel(0)
     elif k == ord('f'): # follow destination
       if (destination == []):
         print('destination not set')
@@ -436,12 +415,15 @@ while True:
     elif k == ord('b'):
       destination = []
       sendVel(0)
-    elif k == ord('c'):
+    elif k == ord('c'): # up、奥
       destination = []
       print('clear destination')
-    elif k == ord('d'):
+    elif k == ord('d'): # up、奥
       print('up')
       ser.write(bytes('d', 'utf-8'))
+    elif k == ord('h'): # up、奥
+      print('home')
+      ser.write(bytes('h', 'utf-8'))
     elif k == ord('q'):
       sendVel(0)
       break
